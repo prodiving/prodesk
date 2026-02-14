@@ -29,6 +29,7 @@ export const apiClient = {
 
   divers: {
     list: () => apiClient.request('GET', '/api/divers'),
+    get: (id) => apiClient.request('GET', `/api/divers/${id}`),
     create: (payload) => apiClient.request('POST', '/api/divers', payload),
     update: (id, payload) => apiClient.request('PUT', `/api/divers/${id}`, payload),
     delete: (id) => apiClient.request('DELETE', `/api/divers/${id}`),

@@ -49,11 +49,11 @@ export default function DiversPage() {
     if (diver) {
       setEditingId(diver.id);
       setForm({
-        name: diver.name,
-        email: diver.email,
+        name: diver.name || "",
+        email: diver.email || "",
         phone: diver.phone || "",
         certification_level: diver.certification_level || "",
-        medical_cleared: diver.medical_cleared ? true : false,
+        medical_cleared: diver.medical_cleared === 1 || diver.medical_cleared === true,
       });
     } else {
       setEditingId(null);
@@ -69,11 +69,16 @@ export default function DiversPage() {
     }
 
     try {
+      const payload = {
+        ...form,
+        medical_cleared: form.medical_cleared === true ? 1 : 0,
+      };
+      
       if (editingId) {
-        await apiClient.divers.update(editingId, form);
+        await apiClient.divers.update(editingId, payload);
         toast({ title: "Success", description: "Diver updated successfully" });
       } else {
-        await apiClient.divers.create(form);
+        await apiClient.divers.create(payload);
         toast({ title: "Success", description: "Diver created successfully" });
       }
       setOpen(false);

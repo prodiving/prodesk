@@ -195,16 +195,29 @@ app.delete('/api/groups/:groupId/members/:memberId', (req, res) => {
 app.get('/api/divers', (req, res) => {
   const db = getDb();
 
-  db.all('SELECT id, name FROM divers ORDER BY name ASC', (err, divers) => {
+  db.all('SELECT * FROM divers ORDER BY name ASC', (err, divers) => {
     db.close();
     if (err) return res.status(500).json({ error: err.message });
     res.json(divers || []);
   });
 });
 
-// POST /api/divers - create a diver (for testing)
+// GET /api/divers/:id - get a specific diver
+app.get('/api/divers/:id', (req, res) => {
+  const { id } = req.params;
+  const db = getDb();
+
+  db.get('SELECT * FROM divers WHERE id = ?', [id], (err, diver) => {
+    db.close();
+    if (err) return res.status(500).json({ error: err.message });
+    if (!diver) return res.status(404).json({ error: 'Diver not found' });
+    res.json(diver);
+  });
+});
+
+// POST /api/divers - create a diver
 app.post('/api/divers', (req, res) => {
-  const { name, email } = req.body;
+  const { name, email, phone, certification_level, medical_cleared } = req.body;
   const id = uuidv4();
 
   if (!name || !email) {
@@ -213,15 +226,15 @@ app.post('/api/divers', (req, res) => {
 
   const db = getDb();
   db.run(
-    'INSERT INTO divers (id, name, email) VALUES (?, ?, ?)',
-    [id, name, email],
+    `INSERT INTO divers (id, name, email, phone, certification_level, medical_cleared) VALUES (?, ?, ?, ?, ?, ?)`,
+    [id, name, email, phone || null, certification_level || null, medical_cleared ? 1 : 0],
     (err) => {
       if (err) {
         db.close();
         return res.status(500).json({ error: err.message });
       }
 
-      db.get('SELECT id, name FROM divers WHERE id = ?', [id], (err, diver) => {
+      db.get('SELECT * FROM divers WHERE id = ?', [id], (err, diver) => {
         db.close();
         if (err) return res.status(500).json({ error: err.message });
         res.json(diver);

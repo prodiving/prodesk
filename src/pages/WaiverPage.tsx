@@ -56,11 +56,16 @@ export default function WaiverPage() {
       });
 
       toast({ title: "Success", description: "Waiver signed successfully" });
-      setSigningMode(false);
-      setSelectedWaiver(null);
-      sigRef.current.clear();
-      load();
+      
+      // Clear form and close dialog
+      setTimeout(() => {
+        setSigningMode(false);
+        setSelectedWaiver(null);
+        if (sigRef.current) sigRef.current.clear();
+        load();
+      }, 500);
     } catch (err) {
+      console.error('Waiver signing error:', err);
       toast({ title: "Error", description: String(err), variant: "destructive" });
     }
   };
@@ -198,12 +203,18 @@ export default function WaiverPage() {
       </div>
 
       {/* Signature Dialog */}
-      {signingMode && selectedWaiver && (
-        <Dialog open={signingMode} onOpenChange={setSigningMode}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Sign Waiver - {selectedWaiver.diver_name}</DialogTitle>
-            </DialogHeader>
+      <Dialog open={signingMode} onOpenChange={(open) => {
+        if (!open) {
+          setSigningMode(false);
+          setSelectedWaiver(null);
+          if (sigRef.current) sigRef.current.clear();
+        }
+      }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedWaiver ? `Sign Waiver - ${selectedWaiver.diver_name}` : 'Sign Waiver'}</DialogTitle>
+          </DialogHeader>
+          {selectedWaiver && (
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-muted-foreground mb-3">
@@ -221,20 +232,26 @@ export default function WaiverPage() {
                 <label className="text-sm font-medium block mb-2">Signature</label>
                 <SignaturePad ref={sigRef} />
                 <div className="mt-2 space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => sigRef.current?.clear()}>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    if (sigRef.current) sigRef.current.clear();
+                  }}>
                     Clear
                   </Button>
                 </div>
               </div>
 
               <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setSigningMode(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => {
+                  setSigningMode(false);
+                  setSelectedWaiver(null);
+                  if (sigRef.current) sigRef.current.clear();
+                }}>Cancel</Button>
                 <Button onClick={() => handleSignWaiver(selectedWaiver.diver_id)}>Sign Waiver</Button>
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
