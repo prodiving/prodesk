@@ -3,7 +3,7 @@ import useGroups from '@/hooks/useGroups';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function GroupsPage() {
-  const { groups, loading, createGroup, addMember, removeMember } = useGroups();
+  const { groups, loading, error, refresh, createGroup, addMember, removeMember } = useGroups();
   const [divers, setDivers] = useState<any[]>([]);
   const [name, setName] = useState('');
   const [leader, setLeader] = useState<string | undefined>(undefined);
@@ -54,6 +54,14 @@ export default function GroupsPage() {
         <div className="col-span-2 p-4 border rounded">
           <h3 className="font-semibold mb-3">Existing Groups</h3>
           {loading && <div>Loading…</div>}
+          {error && (
+            <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+              <div>Failed to load groups: {error.message || JSON.stringify(error)}</div>
+              <div className="mt-2">
+                <button className="btn btn-sm" onClick={() => refresh()}>Reload</button>
+              </div>
+            </div>
+          )}
           <div className="space-y-3">
             {groups.map((g:any) => (
               <div key={g.id} className="p-3 border rounded">
