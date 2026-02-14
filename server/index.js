@@ -984,14 +984,14 @@ app.get('/api/equipment/:id', (req, res) => {
 
 // POST /api/equipment - create new equipment
 app.post('/api/equipment', (req, res) => {
-  const { name, category, sku, price, quantity_in_stock, reorder_level, supplier, description, barcode } = req.body;
+  const { name, category, sku, price, can_buy, can_rent, rent_price_per_day, quantity_in_stock, quantity_available_for_rent, reorder_level, supplier, description, barcode } = req.body;
   if (!name || !category) return res.status(400).json({ error: 'name and category required' });
 
   const db = getDb();
   const id = uuidv4();
   db.run(
-    'INSERT INTO equipment (id, name, category, sku, price, quantity_in_stock, reorder_level, supplier, description, barcode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [id, name, category, sku || null, price || 0, quantity_in_stock || 0, reorder_level || 5, supplier || null, description || null, barcode || null],
+    'INSERT INTO equipment (id, name, category, sku, price, can_buy, can_rent, rent_price_per_day, quantity_in_stock, quantity_available_for_rent, reorder_level, supplier, description, barcode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [id, name, category, sku || null, price || 0, can_buy !== false ? 1 : 0, can_rent !== false ? 1 : 0, rent_price_per_day || 0, quantity_in_stock || 0, quantity_available_for_rent || 0, reorder_level || 5, supplier || null, description || null, barcode || null],
     (err) => {
       if (err) {
         db.close();
@@ -1009,12 +1009,12 @@ app.post('/api/equipment', (req, res) => {
 // PUT /api/equipment/:id - update equipment
 app.put('/api/equipment/:id', (req, res) => {
   const { id } = req.params;
-  const { name, category, sku, price, quantity_in_stock, reorder_level, supplier, description, barcode } = req.body;
+  const { name, category, sku, price, can_buy, can_rent, rent_price_per_day, quantity_in_stock, quantity_available_for_rent, reorder_level, supplier, description, barcode } = req.body;
 
   const db = getDb();
   db.run(
-    'UPDATE equipment SET name = ?, category = ?, sku = ?, price = ?, quantity_in_stock = ?, reorder_level = ?, supplier = ?, description = ?, barcode = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-    [name, category, sku || null, price || 0, quantity_in_stock || 0, reorder_level || 5, supplier || null, description || null, barcode || null, id],
+    'UPDATE equipment SET name = ?, category = ?, sku = ?, price = ?, can_buy = ?, can_rent = ?, rent_price_per_day = ?, quantity_in_stock = ?, quantity_available_for_rent = ?, reorder_level = ?, supplier = ?, description = ?, barcode = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [name, category, sku || null, price || 0, can_buy !== false ? 1 : 0, can_rent !== false ? 1 : 0, rent_price_per_day || 0, quantity_in_stock || 0, quantity_available_for_rent || 0, reorder_level || 5, supplier || null, description || null, barcode || null, id],
     (err) => {
       if (err) {
         db.close();
@@ -1088,6 +1088,7 @@ app.get('/api/transactions/:id', (req, res) => {
     db.all(`
       SELECT 
         ti.id, ti.transaction_id, ti.equipment_id, ti.quantity, ti.unit_price, ti.subtotal,
+        ti.transaction_type, ti.rental_days,
         e.name as equipment_name, e.category, e.sku
       FROM transaction_items ti
       LEFT JOIN equipment e ON ti.equipment_id = e.id
@@ -1114,7 +1115,10 @@ app.post('/api/transactions', (req, res) => {
   // Calculate totals
   let subtotal = 0;
   items.forEach(item => {
-    subtotal += (item.unit_price || 0) * (item.quantity || 1);
+    const itemPrice = item.transaction_type === 'rent' 
+      ? (item.unit_price || 0) * (item.quantity || 1) * (item.rental_days || 1)
+      : (item.unit_price || 0) * (item.quantity || 1);
+    subtotal += itemPrice;
   });
   
   const taxAmount = tax || 0;
@@ -1134,20 +1138,32 @@ app.post('/api/transactions', (req, res) => {
       let completed = 0;
       items.forEach(item => {
         const itemId = uuidv4();
-        const itemSubtotal = (item.unit_price || 0) * (item.quantity || 1);
+        const itemPrice = item.transaction_type === 'rent' 
+          ? (item.unit_price || 0) * (item.quantity || 1) * (item.rental_days || 1)
+          : (item.unit_price || 0) * (item.quantity || 1);
+        const transactionType = item.transaction_type || 'buy';
+        const rentalDays = item.rental_days || 0;
         
         db.run(
-          'INSERT INTO transaction_items (id, transaction_id, equipment_id, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?, ?)',
-          [itemId, transactionId, item.equipment_id, item.quantity || 1, item.unit_price || 0, itemSubtotal],
+          'INSERT INTO transaction_items (id, transaction_id, equipment_id, quantity, unit_price, subtotal, transaction_type, rental_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [itemId, transactionId, item.equipment_id, item.quantity || 1, item.unit_price || 0, itemPrice, transactionType, rentalDays],
           (err) => {
             completed++;
             if (completed === items.length) {
-              // Update equipment quantity
+              // Update equipment quantities based on transaction type
               items.forEach(item => {
-                db.run(
-                  'UPDATE equipment SET quantity_in_stock = quantity_in_stock - ? WHERE id = ?',
-                  [item.quantity || 1, item.equipment_id]
-                );
+                const transactionType = item.transaction_type || 'buy';
+                if (transactionType === 'rent') {
+                  db.run(
+                    'UPDATE equipment SET quantity_available_for_rent = quantity_available_for_rent - ? WHERE id = ?',
+                    [item.quantity || 1, item.equipment_id]
+                  );
+                } else {
+                  db.run(
+                    'UPDATE equipment SET quantity_in_stock = quantity_in_stock - ? WHERE id = ?',
+                    [item.quantity || 1, item.equipment_id]
+                  );
+                }
               });
 
               db.get('SELECT * FROM transactions WHERE id = ?', [transactionId], (err, transaction) => {

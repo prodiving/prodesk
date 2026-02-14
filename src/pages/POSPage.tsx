@@ -15,6 +15,9 @@ import type { Equipment, Transaction, TransactionItem, Payment } from "@/hooks/u
 export default function POSPage() {
   const { toast } = useToast();
 
+  // State for mode selection
+  const [mode, setMode] = useState<"buy" | "rent">("buy");
+
   // State for equipment inventory
   const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
@@ -23,7 +26,7 @@ export default function POSPage() {
   const [editingEquipmentId, setEditingEquipmentId] = useState<string | null>(null);
 
   // State for cart/transaction
-  const [cart, setCart] = useState<Array<{ equipment: Equipment; quantity: number; unitPrice: number }>>([]);
+  const [cart, setCart] = useState<Array<{ equipment: Equipment; quantity: number; unitPrice: number; transactionType: "buy" | "rent"; rentalDays: number }>>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedDiverId, setSelectedDiverId] = useState("");
   const [selectedBookingId, setSelectedBookingId] = useState("");
@@ -121,29 +124,46 @@ export default function POSPage() {
 
   // Cart management
   const addToCart = (item: Equipment) => {
-    const existing = cart.find(c => c.equipment.id === item.id);
+    const isRent = mode === "rent";
+    const price = isRent ? item.rent_price_per_day : item.price;
+    
+    if ((isRent && !item.can_rent) || (!isRent && !item.can_buy)) {
+      toast({ title: "Error", description: `This item cannot be ${isRent ? "rented" : "purchased"}`, variant: "destructive" });
+      return;
+    }
+
+    const existing = cart.find(c => c.equipment.id === item.id && c.transactionType === mode);
     if (existing) {
-      setCart(cart.map(c => c.equipment.id === item.id ? { ...c, quantity: c.quantity + 1 } : c));
+      setCart(cart.map(c => c.equipment.id === item.id && c.transactionType === mode ? { ...c, quantity: c.quantity + 1 } : c));
     } else {
-      setCart([...cart, { equipment: item, quantity: 1, unitPrice: item.price }]);
+      setCart([...cart, { equipment: item, quantity: 1, unitPrice: price, transactionType: mode, rentalDays: 1 }]);
     }
-    toast({ title: "Added to cart", description: `${item.name} added` });
+    toast({ title: "Added to cart", description: `${item.name} (${isRent ? "Rent" : "Buy"}) added` });
   };
 
-  const removeFromCart = (equipmentId: string) => {
-    setCart(cart.filter(c => c.equipment.id !== equipmentId));
+  const removeFromCart = (equipmentId: string, transactionType: "buy" | "rent") => {
+    setCart(cart.filter(c => !(c.equipment.id === equipmentId && c.transactionType === transactionType)));
   };
 
-  const updateCartQuantity = (equipmentId: string, quantity: number) => {
+  const updateCartQuantity = (equipmentId: string, transactionType: "buy" | "rent", quantity: number) => {
     if (quantity <= 0) {
-      removeFromCart(equipmentId);
+      removeFromCart(equipmentId, transactionType);
     } else {
-      setCart(cart.map(c => c.equipment.id === equipmentId ? { ...c, quantity } : c));
+      setCart(cart.map(c => c.equipment.id === equipmentId && c.transactionType === transactionType ? { ...c, quantity } : c));
     }
+  };
+
+  const updateCartRentalDays = (equipmentId: string, days: number) => {
+    setCart(cart.map(c => c.equipment.id === equipmentId && c.transactionType === "rent" ? { ...c, rentalDays: days } : c));
   };
 
   const calculateCartTotal = () => {
-    const subtotal = cart.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+    const subtotal = cart.reduce((sum, item) => {
+      const itemPrice = item.transactionType === "rent" 
+        ? item.quantity * item.unitPrice * item.rentalDays 
+        : item.quantity * item.unitPrice;
+      return sum + itemPrice;
+    }, 0);
     return { subtotal, tax: tax || 0, discount: discount || 0, total: subtotal + (tax || 0) - (discount || 0) };
   };
 
@@ -160,6 +180,8 @@ export default function POSPage() {
           equipment_id: item.equipment.id,
           quantity: item.quantity,
           unit_price: item.unitPrice,
+          transaction_type: item.transactionType,
+          rental_days: item.transactionType === "rent" ? item.rentalDays : 0,
         })),
         tax: tax || 0,
         discount: discount || 0,
@@ -213,6 +235,26 @@ export default function POSPage() {
           <p className="page-description">Manage equipment inventory and process sales</p>
         </div>
         <div className="flex gap-2">
+          {/* Mode Toggle */}
+          <div className="flex gap-1 bg-muted p-1 rounded-lg">
+            <Button 
+              variant={mode === "buy" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setMode("buy")}
+              className="whitespace-nowrap"
+            >
+              Buy Equipment
+            </Button>
+            <Button 
+              variant={mode === "rent" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setMode("rent")}
+              className="whitespace-nowrap"
+            >
+              Rent Equipment
+            </Button>
+          </div>
+
           <Dialog open={cartOpen} onOpenChange={setCartOpen}>
             <DialogTrigger asChild>
               <Button className="bg-green-600 hover:bg-green-700" onClick={() => setCartOpen(true)}>
@@ -231,24 +273,41 @@ export default function POSPage() {
                   <>
                     <div className="space-y-3">
                       {cart.map(item => (
-                        <div key={item.equipment.id} className="flex items-center justify-between p-3 bg-muted/50 rounded">
+                        <div key={`${item.equipment.id}-${item.transactionType}`} className="flex items-center justify-between p-3 bg-muted/50 rounded">
                           <div className="flex-1">
                             <p className="font-medium">{item.equipment.name}</p>
-                            <p className="text-sm text-muted-foreground">${item.unitPrice.toFixed(2)} each</p>
+                            <p className="text-sm text-muted-foreground">${item.unitPrice.toFixed(2)} {item.transactionType === "rent" ? "per day" : "each"}</p>
+                            {item.transactionType === "rent" && (
+                              <div className="mt-2 flex items-center gap-2">
+                                <Label className="text-xs">Days:</Label>
+                                <Input 
+                                  type="number" 
+                                  min="1" 
+                                  value={item.rentalDays}
+                                  onChange={(e) => updateCartRentalDays(item.equipment.id, parseInt(e.target.value) || 1)}
+                                  className="w-16 h-8"
+                                />
+                              </div>
+                            )}
                           </div>
                           <div className="flex items-center gap-2">
                             <Input
                               type="number"
                               min="1"
                               value={item.quantity}
-                              onChange={(e) => updateCartQuantity(item.equipment.id, parseInt(e.target.value) || 1)}
+                              onChange={(e) => updateCartQuantity(item.equipment.id, item.transactionType, parseInt(e.target.value) || 1)}
                               className="w-16"
                             />
-                            <span className="w-20 text-right font-medium">${(item.quantity * item.unitPrice).toFixed(2)}</span>
+                            <span className="w-24 text-right font-medium">
+                              {item.transactionType === "rent" 
+                                ? `$${(item.quantity * item.unitPrice * item.rentalDays).toFixed(2)}`
+                                : `$${(item.quantity * item.unitPrice).toFixed(2)}`
+                              }
+                            </span>
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => removeFromCart(item.equipment.id)}
+                              onClick={() => removeFromCart(item.equipment.id, item.transactionType)}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -336,7 +395,7 @@ export default function POSPage() {
                 Add Equipment
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingEquipmentId ? "Edit Equipment" : "Add Equipment"}</DialogTitle>
               </DialogHeader>
@@ -369,13 +428,49 @@ export default function POSPage() {
                     />
                   </div>
                   <div>
-                    <Label>Price</Label>
+                    <Label>Price (Buy)</Label>
                     <Input
                       type="number"
                       step="0.01"
                       value={equipmentForm.price || 0}
                       onChange={(e) => setEquipmentForm({ ...equipmentForm, price: parseFloat(e.target.value) })}
                       placeholder="Price"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label>Can Buy?</Label>
+                    <Select value={equipmentForm.can_buy ? "yes" : "no"} onValueChange={(val) => setEquipmentForm({ ...equipmentForm, can_buy: val === "yes" })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="yes">Yes</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Can Rent?</Label>
+                    <Select value={equipmentForm.can_rent ? "yes" : "no"} onValueChange={(val) => setEquipmentForm({ ...equipmentForm, can_rent: val === "yes" })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="yes">Yes</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Rent Price/Day</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={equipmentForm.rent_price_per_day || 0}
+                      onChange={(e) => setEquipmentForm({ ...equipmentForm, rent_price_per_day: parseFloat(e.target.value) })}
+                      placeholder="$/day"
                     />
                   </div>
                 </div>
@@ -390,13 +485,22 @@ export default function POSPage() {
                     />
                   </div>
                   <div>
-                    <Label>Reorder Level</Label>
+                    <Label>Rental Stock</Label>
                     <Input
                       type="number"
-                      value={equipmentForm.reorder_level || 5}
-                      onChange={(e) => setEquipmentForm({ ...equipmentForm, reorder_level: parseInt(e.target.value) })}
+                      value={equipmentForm.quantity_available_for_rent || 0}
+                      onChange={(e) => setEquipmentForm({ ...equipmentForm, quantity_available_for_rent: parseInt(e.target.value) })}
+                      placeholder="Available for rent"
                     />
                   </div>
+                </div>
+                <div>
+                  <Label>Reorder Level</Label>
+                  <Input
+                    type="number"
+                    value={equipmentForm.reorder_level || 5}
+                    onChange={(e) => setEquipmentForm({ ...equipmentForm, reorder_level: parseInt(e.target.value) })}
+                  />
                 </div>
                 <div>
                   <Label>Description</Label>
@@ -475,11 +579,18 @@ export default function POSPage() {
       {/* Equipment/Inventory List */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <div className="page-header mb-4">
-            <h2 className="page-title">Equipment Catalog</h2>
+          <div className="page-header mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="page-title">Equipment {mode === "buy" ? "For Sale" : "For Rent"}</h2>
+            </div>
+            <Badge variant={mode === "buy" ? "default" : "secondary"} className="text-sm">
+              {mode === "buy" ? "Purchase Mode" : "Rental Mode"}
+            </Badge>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {equipmentList.map(item => (
+            {equipmentList
+              .filter(item => mode === "buy" ? item.can_buy : item.can_rent)
+              .map(item => (
               <Card key={item.id} className="hover:shadow-lg transition-shadow">
                 <CardContent className="pt-6">
                   <div className="space-y-3">
@@ -488,9 +599,15 @@ export default function POSPage() {
                       <p className="text-sm text-muted-foreground">{item.category} {item.sku && `• ${item.sku}`}</p>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold">${item.price.toFixed(2)}</span>
-                      <Badge variant={item.quantity_in_stock > item.reorder_level ? "secondary" : "destructive"}>
-                        {item.quantity_in_stock} in stock
+                      <span className="text-2xl font-bold">
+                        ${mode === "buy" ? item.price.toFixed(2) : item.rent_price_per_day.toFixed(2)}
+                        {mode === "rent" && <span className="text-xs font-normal text-muted-foreground">/day</span>}
+                      </span>
+                      <Badge variant={mode === "buy" 
+                        ? (item.quantity_in_stock > item.reorder_level ? "secondary" : "destructive")
+                        : (item.quantity_available_for_rent > 0 ? "secondary" : "destructive")
+                      }>
+                        {mode === "buy" ? `${item.quantity_in_stock} in stock` : `${item.quantity_available_for_rent} available`}
                       </Badge>
                     </div>
                     {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
@@ -498,7 +615,7 @@ export default function POSPage() {
                       <Button
                         className="flex-1 bg-blue-600 hover:bg-blue-700"
                         onClick={() => addToCart(item)}
-                        disabled={item.quantity_in_stock === 0}
+                        disabled={mode === "buy" ? item.quantity_in_stock === 0 : item.quantity_available_for_rent === 0}
                       >
                         <ShoppingCart className="h-4 w-4 mr-1" />
                         Add to Cart

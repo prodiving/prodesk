@@ -45,18 +45,18 @@ const diveSites = [
 ];
 
 const equipment = [
-  { name: 'Diving Mask', category: 'masks', sku: 'MASK-001', price: 45, quantity_in_stock: 25, reorder_level: 5 },
-  { name: 'Snorkel', category: 'snorkels', sku: 'SNOR-001', price: 25, quantity_in_stock: 30, reorder_level: 5 },
-  { name: 'Fins (Pair)', category: 'fins', sku: 'FIN-001', price: 65, quantity_in_stock: 20, reorder_level: 5 },
-  { name: 'Wetsuit 3mm', category: 'wetsuits', sku: 'WET-3MM', price: 120, quantity_in_stock: 15, reorder_level: 3 },
-  { name: 'Wetsuit 5mm', category: 'wetsuits', sku: 'WET-5MM', price: 150, quantity_in_stock: 10, reorder_level: 3 },
-  { name: 'Diving Tank (AL80)', category: 'tanks', sku: 'TANK-AL80', price: 199, quantity_in_stock: 8, reorder_level: 2 },
-  { name: 'BCD (Buoyancy)', category: 'bcds', sku: 'BCD-001', price: 349, quantity_in_stock: 6, reorder_level: 2 },
-  { name: 'Regulator Set', category: 'regs', sku: 'REG-001', price: 399, quantity_in_stock: 5, reorder_level: 2 },
-  { name: 'Weight Belt', category: 'weights', sku: 'BELT-001', price: 35, quantity_in_stock: 12, reorder_level: 5 },
-  { name: 'Diving Computer', category: 'computers', sku: 'COMP-001', price: 299, quantity_in_stock: 4, reorder_level: 1 },
-  { name: 'Underwater Torch', category: 'lights', sku: 'TORCH-001', price: 89, quantity_in_stock: 8, reorder_level: 2 },
-  { name: 'Dive Log Book', category: 'books', sku: 'LOG-001', price: 15, quantity_in_stock: 40, reorder_level: 10 },
+  { name: 'Diving Mask', category: 'masks', sku: 'MASK-001', price: 45, rent_price_per_day: 5, quantity_in_stock: 25, quantity_available_for_rent: 25, reorder_level: 5 },
+  { name: 'Snorkel', category: 'snorkels', sku: 'SNOR-001', price: 25, rent_price_per_day: 3, quantity_in_stock: 30, quantity_available_for_rent: 30, reorder_level: 5 },
+  { name: 'Fins (Pair)', category: 'fins', sku: 'FIN-001', price: 65, rent_price_per_day: 8, quantity_in_stock: 20, quantity_available_for_rent: 20, reorder_level: 5 },
+  { name: 'Wetsuit 3mm', category: 'wetsuits', sku: 'WET-3MM', price: 120, rent_price_per_day: 15, quantity_in_stock: 15, quantity_available_for_rent: 15, reorder_level: 3 },
+  { name: 'Wetsuit 5mm', category: 'wetsuits', sku: 'WET-5MM', price: 150, rent_price_per_day: 18, quantity_in_stock: 10, quantity_available_for_rent: 10, reorder_level: 3 },
+  { name: 'Diving Tank (AL80)', category: 'tanks', sku: 'TANK-AL80', price: 199, rent_price_per_day: 25, quantity_in_stock: 8, quantity_available_for_rent: 8, reorder_level: 2 },
+  { name: 'BCD (Buoyancy)', category: 'bcds', sku: 'BCD-001', price: 349, rent_price_per_day: 35, quantity_in_stock: 6, quantity_available_for_rent: 6, reorder_level: 2 },
+  { name: 'Regulator Set', category: 'regs', sku: 'REG-001', price: 399, rent_price_per_day: 40, quantity_in_stock: 5, quantity_available_for_rent: 5, reorder_level: 2 },
+  { name: 'Weight Belt', category: 'weights', sku: 'BELT-001', price: 35, rent_price_per_day: 5, quantity_in_stock: 12, quantity_available_for_rent: 12, reorder_level: 5 },
+  { name: 'Diving Computer', category: 'computers', sku: 'COMP-001', price: 299, rent_price_per_day: 30, quantity_in_stock: 4, quantity_available_for_rent: 4, reorder_level: 1 },
+  { name: 'Underwater Torch', category: 'lights', sku: 'TORCH-001', price: 89, rent_price_per_day: 10, quantity_in_stock: 8, quantity_available_for_rent: 8, reorder_level: 2 },
+  { name: 'Dive Log Book', category: 'books', sku: 'LOG-001', price: 15, rent_price_per_day: 0, quantity_in_stock: 40, quantity_available_for_rent: 0, reorder_level: 10 },
 ];
 
 
@@ -137,8 +137,8 @@ db.serialize(() => {
   // Seed equipment
   equipment.forEach((item) => {
     db.run(
-      'INSERT OR IGNORE INTO equipment (id, name, category, sku, price, quantity_in_stock, reorder_level) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [uuidv4(), item.name, item.category, item.sku, item.price, item.quantity_in_stock, item.reorder_level],
+      'INSERT OR IGNORE INTO equipment (id, name, category, sku, price, can_buy, can_rent, rent_price_per_day, quantity_in_stock, quantity_available_for_rent, reorder_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [uuidv4(), item.name, item.category, item.sku, item.price, 1, item.rent_price_per_day > 0 ? 1 : 0, item.rent_price_per_day, item.quantity_in_stock, item.quantity_available_for_rent, item.reorder_level],
       (err) => {
         if (!err) console.log(`Added equipment: ${item.name}`);
       }
