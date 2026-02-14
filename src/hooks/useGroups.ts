@@ -30,11 +30,21 @@ export function useGroups() {
     return () => { mounted = false; };
   }, [loadGroups]);
 
-  async function createGroup(payload: { name: string; leader_id?: string | null; description?: string | null }) {
+  async function createGroup(payload: { 
+    name: string
+    type?: 'fundive' | 'course'
+    leader_id?: string | null
+    course_id?: string | null
+    days?: number | null
+    description?: string | null 
+  }) {
     try {
       const data = await apiClient.groups.create({
         name: payload.name,
+        type: payload.type ?? 'fundive',
         leader_id: payload.leader_id ?? null,
+        course_id: payload.course_id ?? null,
+        days: payload.days ?? null,
         description: payload.description ?? null,
       });
       await loadGroups();

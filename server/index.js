@@ -30,16 +30,16 @@ app.get('/api/groups', (req, res) => {
   const db = getDb();
 
   db.all(`
-    SELECT id, name, leader_id, description, created_at FROM groups ORDER BY created_at DESC
+    SELECT id, name, type, leader_id, course_id, days, description, created_at FROM groups ORDER BY created_at DESC
   `, (err, groups) => {
     if (err) {
       db.close();
       return res.status(500).json({ error: err.message });
     }
 
-    // Fetch leader and members for each group
+    // Fetch leader, course, and members for each group
     let processed = 0;
-    const result = groups.map(g => ({ ...g, leader: null, members: [] }));
+    const result = groups.map(g => ({ ...g, leader: null, course: null, members: [] }));
 
     if (groups.length === 0) {
       db.close();
@@ -52,7 +52,21 @@ app.get('/api/groups', (req, res) => {
         db.get('SELECT id, name FROM divers WHERE id = ?', [group.leader_id], (err, leader) => {
           if (!err && leader) result[i].leader = leader;
           processed++;
-          if (processed === groups.length * 2) {
+          if (processed === groups.length * 3) {
+            db.close();
+            res.json(result);
+          }
+        });
+      } else {
+        processed++;
+      }
+
+      // Fetch course
+      if (group.course_id) {
+        db.get('SELECT id, name, price FROM courses WHERE id = ?', [group.course_id], (err, course) => {
+          if (!err && course) result[i].course = course;
+          processed++;
+          if (processed === groups.length * 3) {
             db.close();
             res.json(result);
           }
@@ -76,7 +90,7 @@ app.get('/api/groups', (req, res) => {
           }));
         }
         processed++;
-        if (processed === groups.length * 2) {
+        if (processed === groups.length * 3) {
           db.close();
           res.json(result);
         }
@@ -87,7 +101,7 @@ app.get('/api/groups', (req, res) => {
 
 // POST /api/groups - create a group
 app.post('/api/groups', (req, res) => {
-  const { name, leader_id, description } = req.body;
+  const { name, type, leader_id, course_id, days, description } = req.body;
   const id = uuidv4();
 
   if (!name) {
@@ -96,8 +110,8 @@ app.post('/api/groups', (req, res) => {
 
   const db = getDb();
   db.run(
-    'INSERT INTO groups (id, name, leader_id, description) VALUES (?, ?, ?, ?)',
-    [id, name, leader_id || null, description || null],
+    'INSERT INTO groups (id, name, type, leader_id, course_id, days, description) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [id, name, type || 'fundive', leader_id || null, course_id || null, days || null, description || null],
     (err) => {
       if (err) {
         db.close();
@@ -105,10 +119,22 @@ app.post('/api/groups', (req, res) => {
       }
 
       // Fetch and return the created group
-      db.get('SELECT id, name, leader_id, description, created_at FROM groups WHERE id = ?', [id], (err, group) => {
+      db.get('SELECT id, name, type, leader_id, course_id, days, description, created_at FROM groups WHERE id = ?', [id], (err, group) => {
         db.close();
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ id: group.id, name: group.name, leader_id: group.leader_id, description: group.description, created_at: group.created_at, leader: null, members: [] });
+        res.json({ 
+          id: group.id, 
+          name: group.name, 
+          type: group.type,
+          leader_id: group.leader_id, 
+          course_id: group.course_id,
+          days: group.days,
+          description: group.description, 
+          created_at: group.created_at, 
+          leader: null, 
+          course: null,
+          members: [] 
+        });
       });
     }
   );

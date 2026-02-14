@@ -33,10 +33,14 @@ export function initDb() {
         CREATE TABLE IF NOT EXISTS groups (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
+          type TEXT DEFAULT 'fundive',
           leader_id TEXT,
+          course_id TEXT,
+          days INTEGER,
           description TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY(leader_id) REFERENCES divers(id) ON DELETE SET NULL
+          FOREIGN KEY(leader_id) REFERENCES divers(id) ON DELETE SET NULL,
+          FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE SET NULL
         )
       `);
 
