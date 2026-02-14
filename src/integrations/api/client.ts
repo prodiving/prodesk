@@ -3,13 +3,13 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const userId = 'user-1'; // In production, get from auth
 
 export const apiClient = {
-  async request(method, path, body = null) {
+  async request(method: string, path: string, body: Record<string, unknown> | null = null) {
     const headers = {
       'Content-Type': 'application/json',
       'x-user-id': userId,
     };
 
-    const options = { method, headers };
+    const options: RequestInit = { method, headers };
     if (body) options.body = JSON.stringify(body);
 
     const res = await fetch(`${BASE_URL}${path}`, options);

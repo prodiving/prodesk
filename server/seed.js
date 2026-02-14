@@ -9,6 +9,18 @@ const divers = [
   { name: 'Alex Lee', email: 'alex@example.com' },
 ];
 
+const instructors = [
+  { name: 'Captain Tom', email: 'tom@example.com', certification: 'Divemaster' },
+  { name: 'Lisa Chen', email: 'lisa@example.com', certification: 'Instructor' },
+  { name: 'Marco Rossi', email: 'marco@example.com', certification: 'Master Instructor' },
+];
+
+const boats = [
+  { name: 'Sea Explorer', capacity: 20 },
+  { name: 'Ocean Wave', capacity: 15 },
+  { name: 'Neptune\'s Dream', capacity: 25 },
+];
+
 const courses = [
   { name: 'Open Water Certification', price: 499 },
   { name: 'Advanced Open Water', price: 599 },
@@ -38,6 +50,28 @@ db.serialize(() => {
       [uuidv4(), diver.name, diver.email],
       (err) => {
         if (!err) console.log(`Added diver: ${diver.name}`);
+      }
+    );
+  });
+
+  // Seed instructors
+  instructors.forEach((instructor) => {
+    db.run(
+      'INSERT OR IGNORE INTO instructors (id, name, email, certification) VALUES (?, ?, ?, ?)',
+      [uuidv4(), instructor.name, instructor.email, instructor.certification],
+      (err) => {
+        if (!err) console.log(`Added instructor: ${instructor.name}`);
+      }
+    );
+  });
+
+  // Seed boats
+  boats.forEach((boat) => {
+    db.run(
+      'INSERT OR IGNORE INTO boats (id, name, capacity) VALUES (?, ?, ?)',
+      [uuidv4(), boat.name, boat.capacity],
+      (err) => {
+        if (!err) console.log(`Added boat: ${boat.name}`);
       }
     );
   });
