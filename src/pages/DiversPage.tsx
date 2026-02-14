@@ -214,7 +214,7 @@ export default function DiversPage() {
                 size="sm"
                 variant="outline"
                 className="w-full mt-2"
-                onClick={() => window.open('https://www.padi.com/forms', '_blank')}
+                onClick={() => window.open('https://www.uhms.org/images/Recreational-Diving-Medical-Screening-System/forms/Diver_Medical_Participant_Questionnaire_10346_EN_English_2022-02-01.pdf', '_blank')}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Download PADI Medical Form
