@@ -1,22 +1,41 @@
-import { BookOpen, Users, MapPin, TrendingDown } from "lucide-react";
-import type { DiveLog, Diver, DiveSite } from "@/hooks/useDiveData";
+import { useState, useEffect } from "react";
+import { BookOpen, Users, MapPin, TrendingDown, GraduationCap, DollarSign } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
-interface Props {
-  diveLogs: DiveLog[];
-  divers: Diver[];
-  diveSites: DiveSite[];
-}
+export default function DashboardPage() {
+  const [stats, setStats] = useState({ logs: 0, divers: 0, sites: 0, courses: 0, avgDepth: 0, revenue: 0 });
 
-export default function DashboardPage({ diveLogs, divers, diveSites }: Props) {
-  const avgDepth = diveLogs.length
-    ? Math.round(diveLogs.reduce((s, l) => s + l.depth, 0) / diveLogs.length)
-    : 0;
+  useEffect(() => {
+    const load = async () => {
+      const [logs, divers, sites, courses, bookings] = await Promise.all([
+        supabase.from("dive_logs").select("depth"),
+        supabase.from("divers").select("id", { count: "exact", head: true }),
+        supabase.from("dive_sites").select("id", { count: "exact", head: true }),
+        supabase.from("courses").select("id", { count: "exact", head: true }),
+        supabase.from("bookings").select("total_amount, payment_status"),
+      ]);
+      const depths = logs.data || [];
+      const avg = depths.length ? Math.round(depths.reduce((s, l) => s + Number(l.depth), 0) / depths.length) : 0;
+      const rev = (bookings.data || []).filter((b) => b.payment_status === "paid").reduce((s, b) => s + Number(b.total_amount), 0);
+      setStats({
+        logs: depths.length,
+        divers: divers.count || 0,
+        sites: sites.count || 0,
+        courses: courses.count || 0,
+        avgDepth: avg,
+        revenue: rev,
+      });
+    };
+    load();
+  }, []);
 
-  const stats = [
-    { label: "Total Dives", value: diveLogs.length, icon: BookOpen, color: "text-primary" },
-    { label: "Registered Divers", value: divers.length, icon: Users, color: "text-accent" },
-    { label: "Dive Sites", value: diveSites.length, icon: MapPin, color: "text-info" },
-    { label: "Avg Depth", value: `${avgDepth}m`, icon: TrendingDown, color: "text-warning" },
+  const cards = [
+    { label: "Total Dives", value: stats.logs, icon: BookOpen, color: "text-primary" },
+    { label: "Registered Divers", value: stats.divers, icon: Users, color: "text-accent" },
+    { label: "Dive Sites", value: stats.sites, icon: MapPin, color: "text-info" },
+    { label: "Active Courses", value: stats.courses, icon: GraduationCap, color: "text-success" },
+    { label: "Avg Depth", value: `${stats.avgDepth}m`, icon: TrendingDown, color: "text-warning" },
+    { label: "Revenue (Paid)", value: `$${stats.revenue}`, icon: DollarSign, color: "text-primary" },
   ];
 
   return (
@@ -25,9 +44,8 @@ export default function DashboardPage({ diveLogs, divers, diveSites }: Props) {
         <h1 className="page-title">Dashboard</h1>
         <p className="page-description">Overview of your diving operations</p>
       </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {stats.map((s) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {cards.map((s) => (
           <div key={s.label} className="stat-card">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-medium text-muted-foreground">{s.label}</span>
@@ -36,57 +54,6 @@ export default function DashboardPage({ diveLogs, divers, diveSites }: Props) {
             <p className="text-3xl font-bold tracking-tight">{s.value}</p>
           </div>
         ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-card rounded-lg border p-5">
-          <h2 className="text-lg font-semibold mb-4">Recent Dive Logs</h2>
-          {diveLogs.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No dive logs yet.</p>
-          ) : (
-            <div className="space-y-3">
-              {diveLogs.slice(-5).reverse().map((log) => (
-                <div key={log.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                  <div>
-                    <p className="font-medium text-sm">{log.site}</p>
-                    <p className="text-xs text-muted-foreground">{log.diver} · {log.date}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-mono font-medium">{log.depth}m</p>
-                    <p className="text-xs text-muted-foreground">{log.duration} min</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="bg-card rounded-lg border p-5">
-          <h2 className="text-lg font-semibold mb-4">Dive Sites by Difficulty</h2>
-          <div className="space-y-3">
-            {(["easy", "moderate", "challenging", "expert"] as const).map((diff) => {
-              const count = diveSites.filter((s) => s.difficulty === diff).length;
-              const colors: Record<string, string> = {
-                easy: "bg-success",
-                moderate: "bg-info",
-                challenging: "bg-warning",
-                expert: "bg-destructive",
-              };
-              return (
-                <div key={diff} className="flex items-center gap-3">
-                  <span className="text-sm capitalize w-24 text-muted-foreground">{diff}</span>
-                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${colors[diff]} transition-all`}
-                      style={{ width: `${diveSites.length ? (count / diveSites.length) * 100 : 0}%` }}
-                    />
-                  </div>
-                  <span className="text-sm font-mono w-6 text-right">{count}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
       </div>
     </div>
   );
