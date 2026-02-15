@@ -1,6 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import jsPDF from 'jspdf';
 
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 export interface Equipment {
   id: string;
   name: string;
@@ -85,21 +87,21 @@ export async function fetchTopItems(days = 30, limit = 5) {
 // Equipment operations
 export const equipment = {
   list: async () => {
-    const response = await fetch('/api/equipment');
+    const response = await fetch(`${BASE_URL}/api/equipment`);
     if (!response.ok) throw new Error(`Failed to load equipment: ${response.status}`);
     const data = await response.json();
     return { data, error: null };
   },
 
   get: async (id: string) => {
-    const response = await fetch(`/api/equipment/${id}`);
+    const response = await fetch(`${BASE_URL}/api/equipment/${id}`);
     if (!response.ok) throw new Error(`Failed to load equipment: ${response.status}`);
     const data = await response.json();
     return { data, error: null };
   },
 
   create: async (item: Partial<Equipment>) => {
-    const response = await fetch('/api/equipment', {
+    const response = await fetch(`${BASE_URL}/api/equipment`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(item),
@@ -110,7 +112,7 @@ export const equipment = {
   },
 
   update: async (id: string, item: Partial<Equipment>) => {
-    const response = await fetch(`/api/equipment/${id}`, {
+    const response = await fetch(`${BASE_URL}/api/equipment/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(item),
@@ -121,7 +123,7 @@ export const equipment = {
   },
 
   delete: async (id: string) => {
-    const response = await fetch(`/api/equipment/${id}`, {
+    const response = await fetch(`${BASE_URL}/api/equipment/${id}`, {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error(`Failed to delete equipment: ${response.status}`);
@@ -133,14 +135,14 @@ export const equipment = {
 // Transaction operations
 export const transactions = {
   list: async () => {
-    const response = await fetch('/api/transactions');
+    const response = await fetch(`${BASE_URL}/api/transactions`);
     if (!response.ok) throw new Error(`Failed to load transactions: ${response.status}`);
     const data = await response.json();
     return { data, error: null };
   },
 
   get: async (id: string) => {
-    const response = await fetch(`/api/transactions/${id}`);
+    const response = await fetch(`${BASE_URL}/api/transactions/${id}`);
     if (!response.ok) throw new Error(`Failed to load transaction: ${response.status}`);
     const data = await response.json();
     return { data, error: null };
@@ -154,7 +156,7 @@ export const transactions = {
     discount?: number;
     notes?: string;
   }) => {
-    const response = await fetch('/api/transactions', {
+    const response = await fetch(`${BASE_URL}/api/transactions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(transaction),
@@ -168,7 +170,7 @@ export const transactions = {
 // Payment operations
 export const payments = {
   list: async () => {
-    const response = await fetch('/api/payments');
+    const response = await fetch(`${BASE_URL}/api/payments`);
     if (!response.ok) throw new Error(`Failed to load payments: ${response.status}`);
     const data = await response.json();
     return { data, error: null };
@@ -181,7 +183,7 @@ export const payments = {
     reference_number?: string;
     notes?: string;
   }) => {
-    const response = await fetch('/api/payments', {
+    const response = await fetch(`${BASE_URL}/api/payments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payment),
@@ -195,7 +197,7 @@ export const payments = {
 // POS summary
 export const pos = {
   getSummary: async () => {
-    const response = await fetch('/api/pos/summary');
+    const response = await fetch(`${BASE_URL}/api/pos/summary`);
     if (!response.ok) throw new Error(`Failed to load POS summary: ${response.status}`);
     const data = await response.json();
     return { data, error: null };
@@ -205,7 +207,7 @@ export const pos = {
 // Rental assignments
 export const rentalAssignments = {
   list: async (bookingId?: string) => {
-    const url = bookingId ? `/api/rental-assignments?booking_id=${bookingId}` : '/api/rental-assignments';
+    const url = bookingId ? `${BASE_URL}/api/rental-assignments?booking_id=${bookingId}` : `${BASE_URL}/api/rental-assignments`;
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Failed to load rental assignments: ${response.status}`);
     const data = await response.json();
@@ -220,7 +222,7 @@ export const rentalAssignments = {
     check_out: string;
     notes?: string;
   }) => {
-    const response = await fetch('/api/rental-assignments', {
+    const response = await fetch(`${BASE_URL}/api/rental-assignments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(assignment),
@@ -231,7 +233,7 @@ export const rentalAssignments = {
   },
 
   delete: async (id: string) => {
-    const response = await fetch(`/api/rental-assignments/${id}`, {
+    const response = await fetch(`${BASE_URL}/api/rental-assignments/${id}`, {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error(`Failed to delete rental assignment: ${response.status}`);
