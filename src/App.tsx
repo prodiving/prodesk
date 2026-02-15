@@ -29,6 +29,7 @@ import HiraPage from "@/pages/HiraPage";
 import IncidentsPage from "@/pages/IncidentsPage";
 import DebugPage from "@/pages/DebugPage";
 import GroupsPage from "@/pages/GroupsPage";
+import CalendarPage from "@/pages/CalendarPage";
 // POSPage removed
 
 const queryClient = new QueryClient();
@@ -62,6 +63,7 @@ function ProtectedRoutes() {
         <Route path="/hira" element={<HiraPage />} />
         <Route path="/incidents" element={<IncidentsPage />} />
         <Route path="/groups" element={<GroupsPage />} />
+        <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/emergency" element={<EmergencyPage />} />
         <Route path="/accommodations" element={<AccommodationsPage />} />
         <Route path="*" element={<NotFound />} />
