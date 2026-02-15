@@ -126,6 +126,10 @@ export function initDb() {
           accommodation_id TEXT,
           check_in TEXT,
           check_out TEXT,
+          size TEXT,
+          weight TEXT,
+          height TEXT,
+          agent_id TEXT,
           total_amount REAL DEFAULT 0,
           invoice_number TEXT UNIQUE,
           payment_status TEXT DEFAULT 'unpaid',
@@ -138,6 +142,24 @@ export function initDb() {
           FOREIGN KEY(accommodation_id) REFERENCES accommodations(id) ON DELETE SET NULL
         )
       `);
+
+      // Ensure new columns exist for older databases
+      db.all("PRAGMA table_info(bookings)", (err, cols) => {
+        if (err) return;
+        const names = (cols || []).map(c => c.name);
+        const toAdd = [];
+        if (!names.includes('size')) toAdd.push(`ALTER TABLE bookings ADD COLUMN size TEXT`);
+        if (!names.includes('weight')) toAdd.push(`ALTER TABLE bookings ADD COLUMN weight TEXT`);
+        if (!names.includes('height')) toAdd.push(`ALTER TABLE bookings ADD COLUMN height TEXT`);
+        if (!names.includes('agent_id')) toAdd.push(`ALTER TABLE bookings ADD COLUMN agent_id TEXT`);
+        toAdd.forEach(sql => {
+          db.run(sql, (err) => {
+            if (err) {
+              // ignore; column may already exist on some sqlite versions
+            }
+          });
+        });
+      });
 
       // Waivers table
       db.run(`

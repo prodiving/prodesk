@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Edit2, FileText, Download, Printer, X } from "lucide-react";
+import { Plus, Trash2, Edit2, FileText, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -17,28 +17,26 @@ export default function BookingsPage() {
   const [divers, setDivers] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
+  const [instructors, setInstructors] = useState<any[]>([]);
   const [accommodations, setAccommodations] = useState<any[]>([]);
-  const [equipmentList, setEquipmentList] = useState<any[]>([]);
   const [stats, setStats] = useState({ booking_count: 0, total_revenue: 0, total_amount: 0 });
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ booking_type: "course", diver_id: "", group_id: "", course_id: "", accommodation_id: "", check_in: "", check_out: "", payment_status: "unpaid", notes: "" });
-  const [selectedEquipment, setSelectedEquipment] = useState<Array<{ equipment_id: string; quantity: number }>>([]);
-  const [rentalAssignmentsList, setRentalAssignmentsList] = useState<any[]>([]);
+  const [form, setForm] = useState({ booking_type: "course", diver_id: "", group_id: "", course_id: "", accommodation_id: "", check_in: "", check_out: "", payment_status: "unpaid", notes: "", size: "", weight: "", height: "", agent_id: "" });
   const { toast } = useToast();
 
   const load = async () => {
     setLoading(true);
     try {
-      const [b, d, g, c, a, s, e] = await Promise.all([
+      const [b, d, g, c, a, s, ins] = await Promise.all([
         apiClient.bookings.list(),
         apiClient.divers.list(),
         apiClient.groups.list(),
         apiClient.courses.list(),
         apiClient.accommodations.list(),
         apiClient.bookings.getLast30Days(),
-        equipment.list(),
+        apiClient.instructors.list(),
       ]);
       setBookings(b);
       setDivers(d);
@@ -46,7 +44,7 @@ export default function BookingsPage() {
       setCourses(c);
       setAccommodations(a);
       setStats(s);
-      setEquipmentList(e.data || []);
+      setInstructors(ins || []);
     } catch (err) {
       console.error('Failed to load bookings', err);
       toast({ title: "Error", description: String(err), variant: "destructive" });
@@ -68,17 +66,6 @@ export default function BookingsPage() {
     if (acc && nights > 0) {
       total += Number(acc.price_per_night) * nights;
     }
-
-    // Equipment rental totals (price per day * quantity * nights)
-    if (selectedEquipment && selectedEquipment.length > 0) {
-      const equipmentTotal = selectedEquipment.reduce((sum, sel) => {
-        const item = equipmentList.find((e) => e.id === sel.equipment_id);
-        if (!item) return sum;
-        const dayCount = nights > 0 ? nights : 1;
-        return sum + (Number(item.rent_price_per_day || 0) * Number(sel.quantity || 0) * dayCount);
-      }, 0);
-      total += equipmentTotal;
-    }
     return total;
   };
 
@@ -95,24 +82,16 @@ export default function BookingsPage() {
         check_out: booking.check_out || "",
         payment_status: booking.payment_status || "unpaid",
         notes: booking.notes || "",
+        size: booking.size || "",
+        weight: booking.weight || "",
+        height: booking.height || "",
+        agent_id: booking.agent?.id || "",
       });
-      loadRentalAssignments(booking.id);
     } else {
       setEditingId(null);
-      setForm({ booking_type: "course", diver_id: "", group_id: "", course_id: "", accommodation_id: "", check_in: "", check_out: "", payment_status: "unpaid", notes: "" });
-      setSelectedEquipment([]);
-      setRentalAssignmentsList([]);
+      setForm({ booking_type: "course", diver_id: "", group_id: "", course_id: "", accommodation_id: "", check_in: "", check_out: "", payment_status: "unpaid", notes: "", size: "", weight: "", height: "", agent_id: "" });
     }
     setOpen(true);
-  };
-
-  const loadRentalAssignments = async (bookingId: string) => {
-    try {
-      const { data } = await rentalAssignments.list(bookingId);
-      setRentalAssignmentsList(data || []);
-    } catch (err) {
-      console.error('Failed to load rental assignments', err);
-    }
   };
 
   const handleSubmit = async () => {
@@ -205,7 +184,7 @@ export default function BookingsPage() {
   const handleInvoiceDownload = async (booking: any) => {
     try {
       const nights = calculateNights(booking.check_in, booking.check_out);
-      const accommodationPrice = booking.accommodations?.price_per_night 
+      const accommodationPrice = booking.accommodations?.price_per_night
         ? (booking.accommodations.price_per_night * nights)
         : 0;
 
@@ -215,6 +194,10 @@ export default function BookingsPage() {
         coursePrice: booking.courses?.price || 0,
         accommodation: booking.accommodations?.name || "No Accommodation",
         accommodationPrice: accommodationPrice,
+        size: booking.size || '',
+        weight: booking.weight || '',
+        height: booking.height || '',
+        agent: booking.agent?.name || '',
         totalAmount: booking.total_amount,
         paymentStatus: booking.payment_status,
         invoiceNumber: booking.invoice_number || booking.id,
@@ -231,7 +214,7 @@ export default function BookingsPage() {
   const handleInvoicePrint = async (booking: any) => {
     try {
       const nights = calculateNights(booking.check_in, booking.check_out);
-      const accommodationPrice = booking.accommodations?.price_per_night 
+      const accommodationPrice = booking.accommodations?.price_per_night
         ? (booking.accommodations.price_per_night * nights)
         : 0;
 
@@ -241,6 +224,10 @@ export default function BookingsPage() {
         coursePrice: booking.courses?.price || 0,
         accommodation: booking.accommodations?.name || "No Accommodation",
         accommodationPrice: accommodationPrice,
+        size: booking.size || '',
+        weight: booking.weight || '',
+        height: booking.height || '',
+        agent: booking.agent?.name || '',
         totalAmount: booking.total_amount,
         paymentStatus: booking.payment_status,
         invoiceNumber: booking.invoice_number || booking.id,
@@ -379,54 +366,33 @@ export default function BookingsPage() {
                 <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
               </div>
 
-              {/* Equipment Assignment */}
               <div className="border-t pt-4">
-                <Label className="text-base font-semibold mb-3 block">Equipment for Check-In</Label>
-                <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
-                  {selectedEquipment.map((sel, idx) => {
-                    const eq = equipmentList.find(e => e.id === sel.equipment_id);
-                    return (
-                      <div key={idx} className="flex items-center justify-between bg-muted/50 p-2 rounded text-sm">
-                        <div className="flex-1">
-                          <p className="font-medium">{eq?.name}</p>
-                          <p className="text-xs text-muted-foreground">${eq?.rent_price_per_day}/day × {sel.quantity}</p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedEquipment(selectedEquipment.filter((_, i) => i !== idx))}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    );
-                  })}
+                <Label className="text-base font-semibold mb-3 block">Details</Label>
+                <div className="grid grid-cols-3 gap-3 mb-3">
+                  <div>
+                    <Label>Size</Label>
+                    <Input value={form.size} onChange={(e) => setForm({ ...form, size: e.target.value })} placeholder="e.g., M, L, XL" />
+                  </div>
+                  <div>
+                    <Label>Weight (kg)</Label>
+                    <Input type="number" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} placeholder="kg" />
+                  </div>
+                  <div>
+                    <Label>Height (cm)</Label>
+                    <Input type="number" value={form.height} onChange={(e) => setForm({ ...form, height: e.target.value })} placeholder="cm" />
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Select>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Add equipment..." />
-                    </SelectTrigger>
+
+                <div>
+                  <Label>Agent</Label>
+                  <Select value={form.agent_id} onValueChange={(v) => setForm({ ...form, agent_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select agent (optional)" /></SelectTrigger>
                     <SelectContent className="z-50">
-                      {equipmentList.filter(e => e.can_rent).map((eq) => (
-                        <SelectItem key={eq.id} value={eq.id}>
-                          {eq.name} (${eq.rent_price_per_day}/day)
-                        </SelectItem>
+                      {instructors.map((ins) => (
+                        <SelectItem key={ins.id} value={ins.id}>{ins.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      const select = document.querySelector('[role="combobox"]') as HTMLElement;
-                      const value = (select?.getAttribute('data-value') || '');
-                      if (value && !selectedEquipment.find(s => s.equipment_id === value)) {
-                        setSelectedEquipment([...selectedEquipment, { equipment_id: value, quantity: 1 }]);
-                      }
-                    }}
-                  >
-                    Add
-                  </Button>
                 </div>
               </div>
 
