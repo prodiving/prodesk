@@ -112,10 +112,48 @@ export default async (req, context) => {
     if (path.includes('/api/bookings') && method === 'GET' && !path.includes('/api/bookings/')) {
       const { data, error } = await supabase
         .from('bookings')
-        .select('*')
+        .select('*, divers(name), courses(name, price), groups(name, days), accommodations(name, price_per_night, tier)')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return sendJson(200, data || []);
+      
+      // Format response to match expected structure
+      const formatted = (data || []).map(b => ({
+        id: b.id,
+        diver_id: b.diver_id,
+        course_id: b.course_id,
+        group_id: b.group_id,
+        accommodation_id: b.accommodation_id,
+        check_in: b.check_in,
+        check_out: b.check_out,
+        total_amount: b.total_amount,
+        invoice_number: b.invoice_number,
+        payment_status: b.payment_status,
+        notes: b.notes,
+        created_at: b.created_at,
+        divers: b.divers ? { name: b.divers.name } : { name: null },
+        courses: b.courses ? { name: b.courses.name, price: b.courses.price } : { name: null, price: null },
+        groups: b.groups ? { name: b.groups.name, days: b.groups.days } : { name: null, days: null },
+        accommodations: b.accommodations ? { name: b.accommodations.name, price_per_night: b.accommodations.price_per_night, tier: b.accommodations.tier } : { name: null, price_per_night: null, tier: null }
+      }));
+      return sendJson(200, formatted);
+    }
+
+    // GET /api/bookings/stats/last30days
+    if (path.includes('/api/bookings/stats/last30days') && method === 'GET') {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('id, total_amount, payment_status, created_at')
+        .gte('created_at', thirtyDaysAgo);
+      if (error) throw error;
+      
+      const booking_count = (data || []).length;
+      const total_revenue = (data || [])
+        .filter(b => b.payment_status === 'paid')
+        .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+      const total_amount = (data || []).reduce((sum, b) => sum + (b.total_amount || 0), 0);
+      
+      return sendJson(200, { booking_count, total_revenue, total_amount });
     }
 
     // POST /api/bookings
