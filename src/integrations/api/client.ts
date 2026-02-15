@@ -1,10 +1,10 @@
-// Simple API client for local and Netlify deployment
+// Simple API client for local and production deployment
 // Locally uses Express server at localhost:3000
-// On Netlify uses /.netlify/functions/api
+// On Netlify/Production uses VITE_API_URL (Railway backend)
 
 const isBrowser = typeof window !== 'undefined';
 const isDevelopment = isBrowser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-const BASE_URL = isDevelopment ? (import.meta.env.VITE_API_URL || 'http://localhost:3000') : '';
+const BASE_URL = isDevelopment ? (import.meta.env.VITE_API_URL || 'http://localhost:3000') : (import.meta.env.VITE_API_URL || '');
 const userId = 'user-1'; // In production, get from auth
 
 export const apiClient = {
