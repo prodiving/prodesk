@@ -53,7 +53,14 @@ export default function EquipmentPage() {
     const payload = edits[id];
     if (!payload) return;
     try {
-      await apiClient.equipment.update(id, payload);
+      // Merge edits with existing item to preserve all fields
+      const existing = items.find(i => i.id === id);
+      if (!existing) {
+        alert('Item not found');
+        return;
+      }
+      const fullPayload = { ...existing, ...payload };
+      await apiClient.equipment.update(id, fullPayload);
       await load();
       setEdits((e) => { const c = { ...e }; delete c[id]; return c; });
     } catch (err) {
@@ -183,9 +190,13 @@ export default function EquipmentPage() {
                   <td>
                     <Input type="number" value={(edits[it.id]?.rent_price_per_day ?? it.rent_price_per_day ?? 0)} onChange={(e) => handleEdit(it.id, 'rent_price_per_day', Number(e.target.value))} className="w-28" />
                   </td>
-                  <td>{it.quantity_available_for_rent ?? it.quantity_in_stock ?? 0}</td>
                   <td>
-                    <Badge variant={getStatus(it) === 'Available' ? 'secondary' : 'destructive'}>{getStatus(it)}</Badge>
+                    <Input type="number" value={(edits[it.id]?.quantity_available_for_rent ?? it.quantity_available_for_rent ?? 0)} onChange={(e) => handleEdit(it.id, 'quantity_available_for_rent', Number(e.target.value))} className="w-28" />
+                  </td>
+                  <td>
+                    <Badge variant={(edits[it.id]?.quantity_available_for_rent ?? it.quantity_available_for_rent ?? 0) > 0 ? 'secondary' : 'destructive'}>
+                      {(edits[it.id]?.quantity_available_for_rent ?? it.quantity_available_for_rent ?? 0) > 0 ? 'Available' : 'Rented out'}
+                    </Badge>
                   </td>
                   <td>
                     <div className="flex gap-2 justify-end">
