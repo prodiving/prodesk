@@ -1,11 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { Anchor, LayoutDashboard, BookOpen, Users, MapPin, GraduationCap, Ship, UserCheck, FileText, AlertTriangle, Home, LogOut, ShoppingCart, Calendar } from "lucide-react";
+import { Anchor, LayoutDashboard, BookOpen, Users, MapPin, GraduationCap, Ship, UserCheck, FileText, AlertTriangle, Home, LogOut, ShoppingCart, Calendar, DollarSign } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 
 const links = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/calendar", label: "Calendar", icon: Calendar },
+  { to: "/finance", label: "Finance", icon: DollarSign },
   { to: "/dive-logs", label: "Dive Logs", icon: BookOpen },
   { to: "/divers", label: "Divers", icon: Users },
   { to: "/dive-sites", label: "Dive Sites", icon: MapPin },

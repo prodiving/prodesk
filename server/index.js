@@ -1371,6 +1371,204 @@ app.delete('/api/rental-assignments/:id', (req, res) => {
   });
 });
 
+// GET /api/finance/summary - get comprehensive financial summary
+app.get('/api/finance/summary', (req, res) => {
+  const { startDate, endDate } = req.query;
+  const db = getDb();
+
+  if (!startDate || !endDate) {
+    db.close();
+    return res.status(400).json({ error: 'startDate and endDate are required' });
+  }
+
+  // Get transaction totals
+  db.all(`
+    SELECT 
+      COUNT(DISTINCT t.id) as total_transactions,
+      SUM(t.total) as total_revenue,
+      SUM(t.tax) as total_tax,
+      SUM(t.discount) as total_discount,
+      p.payment_method,
+      COUNT(DISTINCT p.id) as payment_count,
+      SUM(p.amount) as payment_amount
+    FROM transactions t
+    LEFT JOIN payments p ON t.id = p.transaction_id
+    WHERE DATE(t.created_at) BETWEEN ? AND ?
+    GROUP BY p.payment_method
+  `, [startDate, endDate], (err, paymentData) => {
+    if (err) {
+      db.close();
+      return res.status(500).json({ error: err.message });
+    }
+
+    // Get daily revenue
+    db.all(`
+      SELECT 
+        DATE(t.created_at) as date,
+        SUM(t.total) as amount,
+        COUNT(DISTINCT t.id) as count
+      FROM transactions t
+      WHERE DATE(t.created_at) BETWEEN ? AND ?
+      GROUP BY DATE(t.created_at)
+      ORDER BY date DESC
+    `, [startDate, endDate], (err, dailyRevenue) => {
+      if (err) {
+        db.close();
+        return res.status(500).json({ error: err.message });
+      }
+
+      // Get top selling equipment
+      db.all(`
+        SELECT 
+          e.name,
+          SUM(ti.quantity) as quantity,
+          SUM(ti.subtotal) as revenue
+        FROM transaction_items ti
+        JOIN equipment e ON ti.equipment_id = e.id
+        JOIN transactions t ON ti.transaction_id = t.id
+        WHERE DATE(t.created_at) BETWEEN ? AND ?
+        GROUP BY e.id
+        ORDER BY SUM(ti.subtotal) DESC
+        LIMIT 10
+      `, [startDate, endDate], (err, topEquipment) => {
+        if (err) {
+          db.close();
+          return res.status(500).json({ error: err.message });
+        }
+
+        // Get inventory valuation
+        db.all(`
+          SELECT 
+            SUM(e.quantity_in_stock * e.price) as inventory_value,
+            SUM(e.quantity_in_stock) as total_items
+          FROM equipment e
+          WHERE deleted_at IS NULL
+        `, (err, inventoryData) => {
+          db.close();
+          if (err) return res.status(500).json({ error: err.message });
+
+          // Calculate aggregates
+          const paymentMethods = {};
+          const paymentMethodCounts = {};
+          let totalRevenue = 0;
+          let totalTransactions = 0;
+          let totalTax = 0;
+          let totalDiscount = 0;
+
+          paymentData.forEach(row => {
+            if (row.payment_method) {
+              paymentMethods[row.payment_method] = (paymentMethods[row.payment_method] || 0) + (row.payment_amount || 0);
+              paymentMethodCounts[row.payment_method] = (paymentMethodCounts[row.payment_method] || 0) + (row.payment_count || 0);
+            }
+            totalRevenue += row.total_revenue || 0;
+            totalTransactions += row.total_transactions || 0;
+            totalTax += row.total_tax || 0;
+            totalDiscount += row.total_discount || 0;
+          });
+
+          const summary = {
+            totalRevenue: totalRevenue || 0,
+            totalTransactions: totalTransactions || 0,
+            averageTransactionValue: totalTransactions > 0 ? totalRevenue / totalTransactions : 0,
+            totalTax: totalTax || 0,
+            totalDiscount: totalDiscount || 0,
+            paymentMethods: paymentMethods,
+            paymentMethodCounts: paymentMethodCounts,
+            dailyRevenue: dailyRevenue || [],
+            topEquipment: topEquipment || [],
+            equipmentInventoryValue: inventoryData[0]?.inventory_value || 0,
+            equipmentCost: inventoryData[0]?.inventory_value || 0,
+          };
+
+          res.json(summary);
+        });
+      });
+    });
+  });
+});
+
+// GET /api/finance/export - export financial data
+app.get('/api/finance/export', (req, res) => {
+  const { startDate, endDate, format } = req.query;
+  const db = getDb();
+
+  if (!startDate || !endDate || !format) {
+    db.close();
+    return res.status(400).json({ error: 'startDate, endDate, and format are required' });
+  }
+
+  // Get transaction data
+  db.all(`
+    SELECT 
+      t.transaction_number,
+      t.type,
+      t.subtotal,
+      t.tax,
+      t.discount,
+      t.total,
+      t.created_at,
+      p.payment_method,
+      p.amount as paid_amount,
+      d.name as diver_name,
+      COUNT(ti.id) as item_count
+    FROM transactions t
+    LEFT JOIN payments p ON t.id = p.transaction_id
+    LEFT JOIN divers d ON t.diver_id = d.id
+    LEFT JOIN transaction_items ti ON t.id = ti.transaction_id
+    WHERE DATE(t.created_at) BETWEEN ? AND ?
+    GROUP BY t.id
+    ORDER BY t.created_at DESC
+  `, [startDate, endDate], (err, transactions) => {
+    if (err) {
+      db.close();
+      return res.status(500).json({ error: err.message });
+    }
+
+    db.close();
+
+    // Convert to CSV
+    if (format === 'csv') {
+      const headers = ['Transaction #', 'Date', 'Diver', 'Subtotal', 'Tax', 'Discount', 'Total', 'Payment Method', 'Amount Paid', 'Items'];
+      const rows = transactions.map(t => [
+        t.transaction_number || '',
+        t.created_at || '',
+        t.diver_name || 'Walk-in',
+        t.subtotal || 0,
+        t.tax || 0,
+        t.discount || 0,
+        t.total || 0,
+        t.payment_method || 'N/A',
+        t.paid_amount || 0,
+        t.item_count || 0,
+      ]);
+
+      const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="financial-report-${startDate}-${endDate}.csv"`);
+      res.send(csv);
+    } else if (format === 'excel') {
+      // For Excel, we'll send a structured JSON that can be parsed on frontend
+      res.json({
+        format: 'excel',
+        data: transactions,
+        startDate,
+        endDate,
+      });
+    } else if (format === 'pdf') {
+      // For PDF, send data that can be rendered on frontend
+      res.json({
+        format: 'pdf',
+        data: transactions,
+        startDate,
+        endDate,
+        title: 'Financial Report',
+      });
+    } else {
+      res.status(400).json({ error: 'Invalid format' });
+    }
+  });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
