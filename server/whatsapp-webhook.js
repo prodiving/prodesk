@@ -138,11 +138,10 @@ function processWhatsAppMessage(message) {
 
   // Enhanced certification patterns
   const certPatterns = [
+    /(?:Not Certified|PADI|SSI|NAUI|CMAS|DSD|Snorkelling)\s+(Open Water|Advanced|Rescue|Divemaster|Instructor|Discover Scuba Diving)/i,
     /(?:certified|certification|cert|c-card)[:：]?\s*([a-zA-Z\s]+(?:diver|instructor))/i,
-    /(?:PADI|SSI|NAUI|CMAS|TDI|SDI|BSAC)\s+(Open Water|Advanced|Rescue|Divemaster|Instructor|Master Scuba Diver|OW|AOW|DM|OWSI)/i,
-    /(?:I'm|i am|I have)\s+(?:a\s+)?([a-zA-Z\s]+)\s+(?:certified|diver|instructor)/i,
-    /(?:潜水证|diving\s+cert|cert)[:：]?\s*([a-zA-Z\s]+)/i,
-    /(?:level|cert)[:：]?\s*([a-zA-Z\s]+)/i,
+    /(?:I'm|i am)\s+(?:a\s+)?([a-zA-Z\s]+)\s+(?:certified|diver)/i,
+    /(?:潜水证|diving\s+cert|not\s+certified)[:：]?\s*([a-zA-Z\s]+)/i,
   ];
 
   for (const pattern of certPatterns) {

@@ -101,10 +101,10 @@ export default function WhatsAppMessageParser({ onImport }: WhatsAppMessageParse
 
     // Certification patterns (WhatsApp specific)
     const certPatterns = [
+      /(?:Not Certified|PADI|SSI|NAUI|CMAS|DSD|Snorkelling)\s+(Open Water|Advanced|Rescue|Divemaster|Instructor|Discover Scuba Diving)/i,
       /(?:certified|certification|cert)[:：]?\s*([a-zA-Z\s]+(?:diver|instructor))/i,
-      /(?:PADI|SSI|NAUI|CMAS|TDI|SDI)\s+(Open Water|Advanced|Rescue|Divemaster|Instructor|Master Scuba Diver)/i,
       /(?:I'm|i am)\s+(?:a\s+)?([a-zA-Z\s]+)\s+(?:certified|diver)/i,
-      /(?:潜水证|diving\s+cert|cert)[:：]?\s*([a-zA-Z\s]+)/i,
+      /(?:潜水证|diving\s+cert|not\s+certified)[:：]?\s*([a-zA-Z\s]+)/i,
     ];
 
     for (const pattern of certPatterns) {

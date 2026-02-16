@@ -79,9 +79,9 @@ export default function WeChatMessageParser({ onImport }: WeChatMessageParserPro
 
     // Certification patterns
     const certPatterns = [
-      /(?:PADI|SSI|NAUI|CMAS)\s+(Open Water|Advanced|Rescue|Divemaster|Instructor)/i,
+      /(?:Not Certified|PADI|SSI|NAUI|CMAS|DSD|Snorkelling)\s+(Open Water|Advanced|Rescue|Divemaster|Instructor|Discover Scuba Diving)/i,
       /(?:证书|certification)[:：]\s*([a-zA-Z\s]+)/i,
-      /(?:潜水证|diving\s+cert)/i,
+      /(?:潜水证|diving\s+cert|not\s+certified)/i,
     ];
 
     for (const pattern of certPatterns) {

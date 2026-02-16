@@ -12,9 +12,12 @@ import { apiClient } from "@/integrations/api/client";
 import { useToast } from "@/hooks/use-toast";
 
 const certificationOptions = [
+  "Not Certified",
   "PADI Open Water", "PADI Advanced Open Water", "PADI Rescue Diver", "PADI Divemaster",
   "SSI Open Water", "SSI Advanced", "NAUI Scuba Diver",
-  "CMAS 1 Star", "CMAS 2 Star", "CMAS 3 Star"
+  "CMAS 1 Star", "CMAS 2 Star", "CMAS 3 Star",
+  "DSD (Discover Scuba Diving)",
+  "Snorkelling"
 ];
 
 export default function DiversPage() {
