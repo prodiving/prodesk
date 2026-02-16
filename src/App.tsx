@@ -33,6 +33,12 @@ import CalendarPage from "@/pages/CalendarPage";
 import FinancePage from "@/pages/FinancePage";
 import CreateDiveTripPage from "@/pages/CreateDiveTripPage";
 import CreateSchedulePage from "@/pages/CreateSchedulePage";
+import ExpensesPage from "@/pages/ExpensesPage";
+import SuppliersPage from "@/pages/SuppliersPage";
+import PayrollPage from "@/pages/PayrollPage";
+import ReportsPage from "@/pages/ReportsPage";
+import AgentsPage from "@/pages/AgentsPage";
+import FinanceSettingsPage from "@/pages/FinanceSettingsPage";
 // POSPage removed
 
 const queryClient = new QueryClient();
@@ -70,6 +76,13 @@ function ProtectedRoutes() {
         <Route path="/create-dive-trip" element={<CreateDiveTripPage />} />
         <Route path="/create-schedule" element={<CreateSchedulePage />} />
         <Route path="/finance" element={<FinancePage />} />
+        <Route path="/invoices" element={<InvoicesPage />} />
+        <Route path="/expenses" element={<ExpensesPage />} />
+        <Route path="/suppliers" element={<SuppliersPage />} />
+        <Route path="/payroll" element={<PayrollPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/agents" element={<AgentsPage />} />
+        <Route path="/finance-settings" element={<FinanceSettingsPage />} />
         <Route path="/emergency" element={<EmergencyPage />} />
         <Route path="/accommodations" element={<AccommodationsPage />} />
         <Route path="*" element={<NotFound />} />
