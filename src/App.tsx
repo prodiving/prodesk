@@ -31,6 +31,7 @@ import DebugPage from "@/pages/DebugPage";
 import GroupsPage from "@/pages/GroupsPage";
 import CalendarPage from "@/pages/CalendarPage";
 import FinancePage from "@/pages/FinancePage";
+import CreateDiveTripPage from "@/pages/CreateDiveTripPage";
 // POSPage removed
 
 const queryClient = new QueryClient();
@@ -65,6 +66,7 @@ function ProtectedRoutes() {
         <Route path="/incidents" element={<IncidentsPage />} />
         <Route path="/groups" element={<GroupsPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/create-dive-trip" element={<CreateDiveTripPage />} />
         <Route path="/finance" element={<FinancePage />} />
         <Route path="/emergency" element={<EmergencyPage />} />
         <Route path="/accommodations" element={<AccommodationsPage />} />

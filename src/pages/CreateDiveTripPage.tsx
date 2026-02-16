@@ -9,13 +9,28 @@ import { useToast } from '@/hooks/use-toast';
 import { Settings } from 'lucide-react';
 import { apiClient } from '@/integrations/api/client';
 
+interface DiveSite {
+  id: string;
+  name: string;
+}
+
+interface Boat {
+  id: string;
+  name: string;
+}
+
+interface Instructor {
+  id: string;
+  name: string;
+}
+
 export default function CreateDiveTripPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [diveSites, setDiveSites] = useState<any[]>([]);
-  const [boats, setBoats] = useState<any[]>([]);
-  const [instructors, setInstructors] = useState<any[]>([]);
+  const [diveSites, setDiveSites] = useState<DiveSite[]>([]);
+  const [boats, setBoats] = useState<Boat[]>([]);
+  const [instructors, setInstructors] = useState<Instructor[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [form, setForm] = useState({
@@ -220,7 +235,7 @@ export default function CreateDiveTripPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">No Boat</SelectItem>
-                      {boats.map((boat: any) => (
+                      {boats.map((boat: Boat) => (
                         <SelectItem key={boat.id} value={boat.id}>
                           {boat.name || 'Unnamed Boat'}
                         </SelectItem>
@@ -240,7 +255,7 @@ export default function CreateDiveTripPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">Please select</SelectItem>
-                      {instructors.map((instructor: any) => (
+                      {instructors.map((instructor: Instructor) => (
                         <SelectItem key={instructor.id} value={instructor.id}>
                           {instructor.name || 'Unnamed Instructor'}
                         </SelectItem>

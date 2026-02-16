@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   startOfMonth,
   endOfMonth,
@@ -42,6 +43,7 @@ interface CalendarEvent {
 }
 
 export default function CalendarPage() {
+  const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -267,142 +269,13 @@ export default function CalendarPage() {
         </div>
 
         {/* Create Dive Trip Button */}
-        <Dialog open={showCreateTripModal} onOpenChange={setShowCreateTripModal}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              Create Dive Trip
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create Dive Trip</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              {/* Trip Name */}
-              <div>
-                <Label htmlFor="name">Trip Name *</Label>
-                <Input
-                  id="name"
-                  placeholder="e.g., Tulamben Sunrise Dive"
-                  value={tripForm.name}
-                  onChange={(e) => setTripForm({ ...tripForm, name: e.target.value })}
-                />
-              </div>
-
-              {/* Trip Type */}
-              <div>
-                <Label>Trip Type *</Label>
-                <div className="flex gap-4 mt-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      value="regular"
-                      checked={tripForm.tripType === 'regular'}
-                      onChange={(e) => setTripForm({ ...tripForm, tripType: e.target.value })}
-                    />
-                    Regular
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      value="multi-day"
-                      checked={tripForm.tripType === 'multi-day'}
-                      onChange={(e) => setTripForm({ ...tripForm, tripType: e.target.value })}
-                    />
-                    Multi Day (Liveaboard)
-                  </label>
-                </div>
-              </div>
-
-              {/* Departure Time */}
-              <div>
-                <Label htmlFor="departure-time">Departure Time *</Label>
-                <Input
-                  id="departure-time"
-                  type="datetime-local"
-                  value={tripForm.departureTime}
-                  onChange={(e) => setTripForm({ ...tripForm, departureTime: e.target.value })}
-                />
-              </div>
-
-              {/* Departure Location (Dive Site) */}
-              <div>
-                <Label htmlFor="dive-site">Departure Location (Dive Site) *</Label>
-                <Select value={tripForm.diveSiteId} onValueChange={(value) => setTripForm({ ...tripForm, diveSiteId: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a dive site" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {diveSites.map((site: any) => (
-                      <SelectItem key={site.id} value={site.id}>
-                        {site.name || 'Unnamed Site'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Boat Selection */}
-              <div>
-                <Label htmlFor="boat">Boat</Label>
-                <Select value={tripForm.boatId} onValueChange={(value) => setTripForm({ ...tripForm, boatId: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="No Boat" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">No Boat</SelectItem>
-                    {boats.map((boat: any) => (
-                      <SelectItem key={boat.id} value={boat.id}>
-                        {boat.name || 'Unnamed Boat'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Captain Selection */}
-              <div>
-                <Label htmlFor="captain">Captain</Label>
-                <Select value={tripForm.captainId} onValueChange={(value) => setTripForm({ ...tripForm, captainId: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a captain" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Please select</SelectItem>
-                    {instructors.map((instructor: any) => (
-                      <SelectItem key={instructor.id} value={instructor.id}>
-                        {instructor.name || 'Unnamed Instructor'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Number of Dives */}
-              <div>
-                <Label htmlFor="num-dives">Number of Dives</Label>
-                <Input
-                  id="num-dives"
-                  type="number"
-                  min="1"
-                  value={tripForm.numberOfDives}
-                  onChange={(e) => setTripForm({ ...tripForm, numberOfDives: e.target.value })}
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-2 justify-end pt-4">
-                <Button variant="outline" onClick={() => setShowCreateTripModal(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleCreateTrip}>
-                  Create Trip
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button 
+          className="gap-2"
+          onClick={() => navigate('/create-dive-trip')}
+        >
+          <Plus className="w-4 h-4" />
+          Create Dive Trip
+        </Button>
 
         {/* Create Dive Trip Schedule Button */}
         <Dialog open={showCreateScheduleModal} onOpenChange={setShowCreateScheduleModal}>
