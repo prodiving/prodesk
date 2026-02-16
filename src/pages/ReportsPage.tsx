@@ -38,7 +38,7 @@ export default function ReportsPage() {
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  // Sample dive trip data - more realistic
+  // Sample dive trip data matching your image exactly
   const diveTrips = {
     16: [
       { time: '9a', count: 1, diver: 'Peter Greaney', location: 'Ghost Bay' }
@@ -106,10 +106,10 @@ export default function ReportsPage() {
       </div>
 
       {/* Calendar navigation */}
-      <Card>
-        <CardHeader>
+      <Card className="border-0 shadow-none">
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => navigateMonth('prev')}>
                 <ChevronLeft className="h-4 w-4" />
                 Previous
@@ -143,7 +143,7 @@ export default function ReportsPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {/* Calendar grid */}
           <div className="border border-gray-200 rounded-lg overflow-hidden">
             {/* Week day headers */}
