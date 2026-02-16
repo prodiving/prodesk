@@ -1,23 +1,195 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart3 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, List, Home, FileText, Users } from 'lucide-react';
 
 export default function ReportsPage() {
+  const [currentDate, setCurrentDate] = useState(new Date(2026, 1, 16)); // February 2026
+  const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
+
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    const days = [];
+    
+    // Add empty cells for days before month starts
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
+    }
+    
+    // Add all days of the month
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(i);
+    }
+    
+    return days;
+  };
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  // Sample dive trip data
+  const diveTrips = {
+    16: [
+      { time: '9a', count: 1, diver: 'Peter Greaney', location: 'Ghost Bay' }
+    ]
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      if (direction === 'prev') {
+        newDate.setMonth(prev.getMonth() - 1);
+      } else {
+        newDate.setMonth(prev.getMonth() + 1);
+      }
+      return newDate;
+    });
+  };
+
+  const goToToday = () => {
+    setCurrentDate(new Date());
+  };
+
+  const days = getDaysInMonth(currentDate);
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Reports</h1>
-        <p className="text-muted-foreground">View financial and business reports</p>
+      {/* Header with action buttons */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dive Calendar</h1>
+          <p className="text-muted-foreground">Manage dive trips and schedules</p>
+        </div>
+        <div className="flex gap-2">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Add New Dive Trip
+          </Button>
+          <Button variant="outline">
+            <CalendarIcon className="h-4 w-4 mr-2" />
+            Trip Schedules
+          </Button>
+          <Button variant="outline">
+            <FileText className="h-4 w-4 mr-2" />
+            Daily Summary
+          </Button>
+          <Button variant="outline">
+            <List className="h-4 w-4 mr-2" />
+            Dive Trips List
+          </Button>
+          <Button variant="outline">
+            <Home className="h-4 w-4 mr-2" />
+            Accommodation
+          </Button>
+          <Button variant="outline">
+            <FileText className="h-4 w-4 mr-2" />
+            Reports
+          </Button>
+        </div>
       </div>
 
+      {/* Calendar navigation */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="w-5 h-5" />
-            Coming Soon
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="outline" size="sm" onClick={() => navigateMonth('prev')}>
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigateMonth('next')}>
+                Next
+                <ChevronRight className="h-4 w-4 ml-2" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={goToToday}>
+                Today
+              </Button>
+              <h2 className="text-xl font-semibold">
+                {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+              </h2>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant={viewMode === 'month' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setViewMode('month')}
+              >
+                Month
+              </Button>
+              <Button 
+                variant={viewMode === 'week' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setViewMode('week')}
+              >
+                Basic Week
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">Report generation functionality will be available soon.</p>
+          {/* Calendar grid */}
+          <div className="grid grid-cols-7 gap-px bg-border">
+            {/* Week day headers */}
+            {weekDays.map(day => (
+              <div key={day} className="bg-muted p-2 text-center text-sm font-medium">
+                {day}
+              </div>
+            ))}
+            
+            {/* Calendar days */}
+            {days.map((day, index) => {
+              const isToday = day === 16 && currentDate.getMonth() === 1 && currentDate.getFullYear() === 2026;
+              const dayTrips = day ? diveTrips[day as keyof typeof diveTrips] : [];
+              
+              return (
+                <div 
+                  key={index}
+                  className={`bg-background min-h-[100px] p-2 border-r border-b ${
+                    isToday ? 'ring-2 ring-primary' : ''
+                  } ${!day ? 'bg-muted/50' : ''}`}
+                >
+                  {day && (
+                    <>
+                      <div className={`text-sm font-medium mb-1 ${
+                        isToday ? 'text-primary' : 'text-foreground'
+                      }`}>
+                        {day}
+                      </div>
+                      <div className="space-y-1">
+                        {dayTrips.map((trip, tripIndex) => (
+                          <div 
+                            key={tripIndex}
+                            className="bg-primary/10 border border-primary/20 rounded p-1 text-xs"
+                          >
+                            <div className="font-medium text-primary">
+                              {trip.time} ({trip.count})
+                            </div>
+                            <div className="text-muted-foreground">
+                              {trip.diver}
+                            </div>
+                            <div className="text-muted-foreground">
+                              {trip.location}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </CardContent>
       </Card>
     </div>
