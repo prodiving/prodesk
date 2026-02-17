@@ -1,0 +1,19 @@
+# Sample Render service spec (example). Customize `service` and `database` names/plan.
+services:
+  - type: web
+    name: prodesk-backend
+    env: node
+    repo: prodiving/prodesk
+    branch: main
+    # Root at repo root so Render can build the frontend then start the server
+    root: .
+    # Build frontend assets, then install server deps at start
+    buildCommand: npm ci && npm run build
+    startCommand: cd server && npm ci && npm run start
+    healthCheckPath: /health
+    plan: starter
+
+databases:
+  - name: prodesk-db
+    engine: postgres
+    plan: starter

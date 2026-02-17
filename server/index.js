@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
 import * as dbAdapter from './db-adapter.js';
@@ -13,6 +14,22 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'x-user-id', 'Authorization'],
 }));
 app.use(express.json());
+
+// Serve static frontend if present (production single-service setup)
+const distPath = path.resolve(process.cwd(), '..', 'dist');
+try {
+  app.use(express.static(distPath));
+  // SPA fallback
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path === '/health') return next();
+    res.sendFile(path.join(distPath, 'index.html'), (err) => {
+      if (err) next();
+    });
+  });
+  console.log('📦 Static frontend serving enabled from', distPath);
+} catch (e) {
+  // ignore if dist not present during local dev
+}
 
 // Initialize database
 await dbAdapter.initDb();

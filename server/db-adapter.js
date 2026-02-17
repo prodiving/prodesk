@@ -3,14 +3,11 @@
 let dbModule;
 
 async function initializeDbModule() {
-  const supabaseUrl = process.env.VITE_SUPABASE_URL;
-  const supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  // Prefer an explicit DATABASE_URL (Postgres) in production.
+  // Fall back to local SQLite when DATABASE_URL is not set.
   const isDatabaseUrl = !!process.env.DATABASE_URL;
 
-  if (supabaseUrl && supabaseKey) {
-    console.log('🌐 Using Supabase PostgreSQL');
-    dbModule = await import('./db-supabase.js');
-  } else if (isDatabaseUrl) {
+  if (isDatabaseUrl) {
     console.log('🔗 Using PostgreSQL (DATABASE_URL detected)');
     dbModule = await import('./db-postgres.js');
   } else {
