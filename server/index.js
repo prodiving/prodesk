@@ -17,6 +17,61 @@ app.use(express.json());
 // Initialize database
 await initDb();
 
+// Auto-seed database if empty (ensures Railway has data on startup)
+const db = getDb();
+db.get('SELECT COUNT(*) as count FROM divers', (err, result) => {
+  if (!err && result && result.count === 0) {
+    console.log('📊 Database is empty, auto-seeding with initial data...');
+    seedDatabase();
+  }
+  db.close();
+});
+
+async function seedDatabase() {
+  try {
+    const db = getDb();
+    
+    const divers = [
+      { name: 'John Smith', email: 'john@example.com' },
+      { name: 'Sarah Johnson', email: 'sarah@example.com' },
+      { name: 'Mike Davis', email: 'mike@example.com' },
+      { name: 'Emily Brown', email: 'emily@example.com' },
+      { name: 'Alex Lee', email: 'alex@example.com' },
+    ];
+    
+    const equipment = [
+      { name: 'Diving Mask', category: 'personal', quantity_in_stock: 50, quantity_available_for_rent: 50, can_rent: 1, rent_price_per_day: 5 },
+      { name: 'Snorkel', category: 'personal', quantity_in_stock: 50, quantity_available_for_rent: 50, can_rent: 1, rent_price_per_day: 3 },
+      { name: 'Fins (Pair)', category: 'personal', quantity_in_stock: 40, quantity_available_for_rent: 40, can_rent: 1, rent_price_per_day: 8 },
+      { name: 'Wetsuit 3mm', category: 'personal', quantity_in_stock: 30, quantity_available_for_rent: 30, can_rent: 1, rent_price_per_day: 10 },
+      { name: 'Wetsuit 5mm', category: 'personal', quantity_in_stock: 25, quantity_available_for_rent: 25, can_rent: 1, rent_price_per_day: 12 },
+      { name: 'Diving Tank (AL80)', category: 'equipment', quantity_in_stock: 20, quantity_available_for_rent: 20, can_rent: 1, rent_price_per_day: 15 },
+      { name: 'BCD (Buoyancy)', category: 'equipment', quantity_in_stock: 20, quantity_available_for_rent: 20, can_rent: 1, rent_price_per_day: 20 },
+      { name: 'Regulator Set', category: 'equipment', quantity_in_stock: 15, quantity_available_for_rent: 15, can_rent: 1, rent_price_per_day: 25 },
+    ];
+    
+    // Seed divers
+    for (const diver of divers) {
+      const diverId = uuidv4();
+      db.run('INSERT INTO divers (id, name, email) VALUES (?, ?, ?)', [diverId, diver.name, diver.email]);
+    }
+    
+    // Seed equipment
+    for (const item of equipment) {
+      const eqId = uuidv4();
+      db.run(
+        'INSERT INTO equipment (id, name, category, quantity_in_stock, quantity_available_for_rent, can_rent, rent_price_per_day) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [eqId, item.name, item.category, item.quantity_in_stock, item.quantity_available_for_rent, item.can_rent, item.rent_price_per_day]
+      );
+    }
+    
+    db.close();
+    console.log('✅ Database seeding complete');
+  } catch (err) {
+    console.error('❌ Database seeding failed:', err);
+  }
+}
+
 // Simple auth middleware (for now, accepts any request with a user-id header)
 function authMiddleware(req, res, next) {
   req.userId = req.headers['x-user-id'] || 'user-1';
