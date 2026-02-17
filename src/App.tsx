@@ -30,8 +30,6 @@ import DebugPage from "@/pages/DebugPage";
 import GroupsPage from "@/pages/GroupsPage";
 import CalendarPage from "@/pages/CalendarPage";
 import FinancePage from "@/pages/FinancePage";
-import CreateDiveTripPage from "@/pages/CreateDiveTripPage";
-import CreateSchedulePage from "@/pages/CreateSchedulePage";
 import InvoicesPage from "@/pages/InvoicesPage";
 import ExpensesPage from "@/pages/ExpensesPage";
 import POSPage from "@/pages/POSPage";
@@ -76,8 +74,6 @@ function ProtectedRoutes() {
         <Route path="/incidents" element={<IncidentsPage />} />
         <Route path="/groups" element={<GroupsPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
-        <Route path="/create-dive-trip" element={<CreateDiveTripPage />} />
-        <Route path="/create-schedule" element={<CreateSchedulePage />} />
         <Route path="/finance" element={<FinancePage />} />
         <Route path="/invoices" element={<InvoicesPage />} />
         <Route path="/expenses" element={<ExpensesPage />} />

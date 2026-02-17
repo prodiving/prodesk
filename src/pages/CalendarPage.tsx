@@ -1,5 +1,4 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
 import {
   startOfMonth,
   endOfMonth,
@@ -15,63 +14,50 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { useTrips } from '@/hooks/useTrips';
-import { useIncidents } from '@/hooks/useIncidents';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { apiClient } from '@/integrations/api/client';
-import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { AssignDiversModal } from '@/components/AssignDiversModal';
+
+interface Booking {
+  id: string;
+  check_in: string;
+  check_out: string;
+  divers?: { name: string };
+  courses?: { name: string };
+  agent?: { name: string };
+  total_amount: number;
+  payment_status: string;
+}
 
 interface CalendarEvent {
   id: string;
   date: string;
   title: string;
-  type: 'booking' | 'course' | 'incident' | 'staff';
+  type: 'booking';
   description?: string;
   color: string;
   rawData?: any;
 }
 
 export default function CalendarPage() {
-  const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
-  const [diveSites, setDiveSites] = useState<any[]>([]);
-  const [boats, setBoats] = useState<any[]>([]);
-  const [instructors, setInstructors] = useState<any[]>([]);
-  const [openAssignModal, setOpenAssignModal] = useState(false);
-  const [selectedTripId, setSelectedTripId] = useState<string>('');
-  const [selectedTripName, setSelectedTripName] = useState<string>('');
-  const { trips } = useTrips();
-  const { incidents } = useIncidents();
   const { toast } = useToast();
 
-  // Load bookings and courses
+  // Load bookings
   useEffect(() => {
-    const loadData = async () => {
+    const loadBookings = async () => {
       try {
         setLoading(true);
-        const [bookingsRes, coursesRes, diveSitesRes, boatsRes, instructorsRes] = await Promise.all([
-          apiClient.bookings.list().catch(() => []),
-          apiClient.courses.list().catch(() => []),
-          apiClient.diveSites.list().catch(() => []),
-          apiClient.boats.list().catch(() => []),
-          apiClient.instructors.list().catch(() => []),
-        ]);
+        const bookingsRes = await apiClient.bookings.list().catch(() => []);
 
         const events: CalendarEvent[] = [];
 
-        // Store dive sites, boats, and instructors for the form
-        setDiveSites(Array.isArray(diveSitesRes) ? diveSitesRes : []);
-        setBoats(Array.isArray(boatsRes) ? boatsRes : []);
-        setInstructors(Array.isArray(instructorsRes) ? instructorsRes : []);
-
         // Add booking events - use check_in date
         if (bookingsRes && Array.isArray(bookingsRes)) {
-          bookingsRes.forEach((booking: any) => {
+          bookingsRes.forEach((booking: Booking) => {
             if (booking.check_in) {
               events.push({
                 id: `booking-${booking.id}`,
@@ -86,61 +72,21 @@ export default function CalendarPage() {
           });
         }
 
-        // Add course events
-        if (coursesRes && Array.isArray(coursesRes)) {
-          coursesRes.forEach((course: any) => {
-            // Courses may not have start_date, so we'll skip them if not available
-            if (course.start_date) {
-              events.push({
-                id: `course-${course.id}`,
-                date: course.start_date,
-                title: `Course: ${course.name || 'N/A'}`,
-                type: 'course',
-                description: course.instructor_name,
-                color: 'bg-green-100 text-green-800 border-green-300',
-              });
-            }
-          });
-        }
-
-        // Add trip events
-        trips.forEach((trip: any) => {
-          if (trip.start_at) {
-            events.push({
-              id: `trip-${trip.id}`,
-              date: trip.start_at.split('T')[0],
-              title: `Trip: ${trip.name || trip.location || 'N/A'}`,
-              type: 'booking',
-              description: trip.description,
-              color: 'bg-purple-100 text-purple-800 border-purple-300',
-            });
-          }
-        });
-
-        // Add incident events
-        incidents.forEach((incident: any) => {
-          if (incident.reported_at) {
-            events.push({
-              id: `incident-${incident.id}`,
-              date: incident.reported_at.split('T')[0],
-              title: `Incident: ${incident.severity || 'Report'}`,
-              type: 'incident',
-              description: incident.description,
-              color: 'bg-red-100 text-red-800 border-red-300',
-            });
-          }
-        });
-
         setEvents(events);
       } catch (error) {
-        console.error('Error loading calendar events:', error);
+        console.error('Error loading bookings:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load bookings',
+          variant: 'destructive',
+        });
       } finally {
         setLoading(false);
       }
     };
 
-    loadData();
-  }, [trips, incidents]);
+    loadBookings();
+  }, [toast]);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -168,38 +114,17 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
-          <p className="text-muted-foreground">Bookings and dive trips overview</p>
-        </div>
-
-        <div className="flex gap-2">
-          {/* Create Dive Trip Schedule Button */}
-          <Button 
-            variant="outline" 
-            className="gap-2"
-            onClick={() => navigate('/create-schedule')}
-          >
-            <Plus className="w-4 h-4" />
-            Create Trip Schedule
-          </Button>
-
-          {/* Create Dive Trip Button */}
-          <Button 
-            className="gap-2"
-            onClick={() => navigate('/create-dive-trip')}
-          >
-            <Plus className="w-4 h-4" />
-            Create Dive Trip
-          </Button>
+          <h1 className="text-3xl font-bold tracking-tight">Booking Calendar</h1>
+          <p className="text-muted-foreground">View all bookings scheduled</p>
         </div>
       </div>
 
       {loading && (
         <Card>
           <CardContent className="pt-6">
-            <p className="text-muted-foreground">Loading calendar events...</p>
+            <p className="text-muted-foreground">Loading calendar...</p>
           </CardContent>
         </Card>
       )}
@@ -281,7 +206,7 @@ export default function CalendarPage() {
             </CardContent>
           </Card>
 
-          {/* Selected Event Details */}
+          {/* Selected Booking Details */}
           {selectedEvent && (
             <Card className="bg-blue-50 border-blue-200">
               <CardHeader>
@@ -294,13 +219,7 @@ export default function CalendarPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                {selectedEvent.description && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">{selectedEvent.description}</p>
-                  </div>
-                )}
-                
-                {selectedEvent.type === 'booking' && selectedEvent.rawData && (
+                {selectedEvent.rawData && (
                   <div className="space-y-2 text-sm">
                     <div className="grid grid-cols-2 gap-2">
                       <div>
@@ -331,24 +250,8 @@ export default function CalendarPage() {
                   </div>
                 )}
 
-                {selectedEvent.id.startsWith('trip-') && (
-                  <Button 
-                    className="w-full"
-                    onClick={() => {
-                      const tripId = selectedEvent.id.replace('trip-', '');
-                      setSelectedTripId(tripId);
-                      setSelectedTripName(selectedEvent.title.replace('Trip: ', ''));
-                      setOpenAssignModal(true);
-                    }}
-                  >
-                    Assign Divers
-                  </Button>
-                )}
-
                 <Button className="w-full" onClick={() => {
-                  if (selectedEvent.rawData) {
-                    window.location.href = '/bookings';
-                  }
+                  window.location.href = '/bookings';
                 }}>
                   View/Edit Booking
                 </Button>
@@ -356,45 +259,18 @@ export default function CalendarPage() {
             </Card>
           )}
 
-          {/* Legend */}
+          {/* Bookings List */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Legend</CardTitle>
+              <CardTitle className="text-base">Bookings for {format(currentDate, 'MMMM yyyy')}</CardTitle>
+              <CardDescription>All scheduled bookings</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-blue-100 text-blue-800 border-blue-300">Booking</Badge>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-purple-100 text-purple-800 border-purple-300">Dive Trip</Badge>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-green-100 text-green-800 border-green-300">Course</Badge>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-red-100 text-red-800 border-red-300">Incident</Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Events List */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Upcoming Bookings & Trips</CardTitle>
-              <CardDescription>All bookings and dive trips scheduled for {format(currentDate, 'MMMM yyyy')}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {events.filter(e => e.type === 'booking' || e.title?.includes('Trip')).length === 0 ? (
-                <p className="text-muted-foreground">No bookings or trips scheduled</p>
+              {events.length === 0 ? (
+                <p className="text-muted-foreground">No bookings scheduled</p>
               ) : (
                 <div className="space-y-2">
                   {events
-                    .filter((e) => {
-                      const eventDate = parseISO(e.date);
-                      return isSameMonth(eventDate, currentDate) && (e.type === 'booking' || e.title?.includes('Trip'));
-                    })
                     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
                     .map((event) => (
                       <div
@@ -422,14 +298,6 @@ export default function CalendarPage() {
           </Card>
         </div>
       )}
-
-      {/* Assign Divers Modal */}
-      <AssignDiversModal
-        open={openAssignModal}
-        onOpenChange={setOpenAssignModal}
-        tripId={selectedTripId}
-        tripName={selectedTripName}
-      />
     </div>
   );
 }
