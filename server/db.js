@@ -341,6 +341,20 @@ export function initDb() {
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY(boat_id) REFERENCES boats(id) ON DELETE SET NULL
         )
+      `);
+
+      // Trip Assignments table (assign divers to trips)
+      db.run(`
+        CREATE TABLE IF NOT EXISTS trip_assignments (
+          id TEXT PRIMARY KEY,
+          trip_id TEXT NOT NULL,
+          diver_id TEXT NOT NULL,
+          assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY(trip_id) REFERENCES trips(id) ON DELETE CASCADE,
+          FOREIGN KEY(diver_id) REFERENCES divers(id) ON DELETE CASCADE,
+          UNIQUE(trip_id, diver_id)
+        )
       `, (err) => {
         if (err) {
           db.close();

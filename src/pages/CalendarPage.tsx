@@ -21,6 +21,8 @@ import { useIncidents } from '@/hooks/useIncidents';
 import { apiClient } from '@/integrations/api/client';
 import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { AssignDiversModal } from '@/components/AssignDiversModal';
+import { useTripAssignments } from '@/hooks/useTripAssignments';
 
 interface CalendarEvent {
   id: string;

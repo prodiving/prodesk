@@ -1113,6 +1113,80 @@ app.post('/api/schedules', (req, res) => {
   );
 });
 
+// ========== TRIP ASSIGNMENTS ENDPOINTS ==========
+
+// GET /api/trips/:id/assignments - get all divers assigned to a trip
+app.get('/api/trips/:id/assignments', (req, res) => {
+  const { id } = req.params;
+  const db = getDb();
+
+  db.all(`
+    SELECT ta.id, ta.trip_id, ta.diver_id, ta.assigned_at,
+           d.name as diver_name, d.certification_level
+    FROM trip_assignments ta
+    LEFT JOIN divers d ON ta.diver_id = d.id
+    WHERE ta.trip_id = ?
+    ORDER BY ta.assigned_at DESC
+  `, [id], (err, assignments) => {
+    db.close();
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(assignments || []);
+  });
+});
+
+// POST /api/trips/:id/assignments - assign a diver to a trip
+app.post('/api/trips/:id/assignments', (req, res) => {
+  const { id } = req.params;
+  const { diver_id } = req.body;
+
+  if (!diver_id) {
+    return res.status(400).json({ error: 'diver_id is required' });
+  }
+
+  const assignmentId = uuidv4();
+  const db = getDb();
+
+  db.run(
+    `INSERT INTO trip_assignments (id, trip_id, diver_id)
+     VALUES (?, ?, ?)`,
+    [assignmentId, id, diver_id],
+    (err) => {
+      if (err) {
+        db.close();
+        return res.status(500).json({ error: err.message });
+      }
+
+      db.get(`
+        SELECT ta.id, ta.trip_id, ta.diver_id, ta.assigned_at,
+               d.name as diver_name, d.certification_level
+        FROM trip_assignments ta
+        LEFT JOIN divers d ON ta.diver_id = d.id
+        WHERE ta.id = ?
+      `, [assignmentId], (err, assignment) => {
+        db.close();
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(assignment);
+      });
+    }
+  );
+});
+
+// DELETE /api/trips/:id/assignments/:diver_id - unassign a diver from a trip
+app.delete('/api/trips/:id/assignments/:diver_id', (req, res) => {
+  const { id, diver_id } = req.params;
+  const db = getDb();
+
+  db.run(
+    `DELETE FROM trip_assignments WHERE trip_id = ? AND diver_id = ?`,
+    [id, diver_id],
+    (err) => {
+      db.close();
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ ok: true });
+    }
+  );
+});
+
 // ========== EQUIPMENT / INVENTORY ENDPOINTS ==========
 
 // GET /api/equipment - list all equipment

@@ -103,15 +103,19 @@ export default function CreateDiveTripPage() {
 
       console.log('Response status:', res.status);
 
+      // Read response body only once
+      const responseText = await res.text();
       let responseData;
-      try {
-        responseData = await res.json();
-        console.log('Response data:', responseData);
-      } catch (e) {
-        console.error('Failed to parse JSON:', e);
-        const text = await res.text();
-        console.error('Response text:', text);
-        throw new Error(`Invalid response from server: ${res.status}`);
+      
+      if (responseText) {
+        try {
+          responseData = JSON.parse(responseText);
+          console.log('Response data:', responseData);
+        } catch (parseErr) {
+          console.error('Failed to parse response as JSON:', parseErr);
+          console.error('Response text:', responseText);
+          throw new Error(`Invalid response from server: ${res.status} - ${responseText}`);
+        }
       }
 
       if (!res.ok) {
