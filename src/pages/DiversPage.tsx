@@ -81,6 +81,12 @@ export default function DiversPage() {
 
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    const handler = () => { if (selectedDiver) loadDiverDetails(selectedDiver); };
+    window.addEventListener('rentalAssignmentsUpdated', handler);
+    return () => window.removeEventListener('rentalAssignmentsUpdated', handler);
+  }, [selectedDiver]);
+
   const handleOpenForm = (diver?: any) => {
     if (diver) {
       setEditingId(diver.id);

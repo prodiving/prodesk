@@ -121,6 +121,7 @@ export default function EquipmentPage() {
       }
       await load();
       await loadAssignments();
+      window.dispatchEvent(new Event('rentalAssignmentsUpdated'));
     } catch (err) {
       console.error('Failed to create examples', err);
       alert('Failed to add example items');
@@ -149,6 +150,7 @@ export default function EquipmentPage() {
       await apiClient.equipment.update(it.id, { quantity_available_for_rent: Math.max(0, newAvail) });
       await load();
       await loadAssignments();
+      window.dispatchEvent(new Event('rentalAssignmentsUpdated'));
       alert('Checked out');
     } catch (err) {
       console.error('Checkout failed', err);
@@ -166,6 +168,7 @@ export default function EquipmentPage() {
       await apiClient.equipment.update(assignment.equipment_id, { quantity_available_for_rent: newAvail });
       await load();
       await loadAssignments();
+      window.dispatchEvent(new Event('rentalAssignmentsUpdated'));
       alert('Returned');
     } catch (err) {
       console.error('Return failed', err);
@@ -307,7 +310,7 @@ export default function EquipmentPage() {
 
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setOpenRental(false)}>Cancel</Button>
-              <Button onClick={async () => {
+                  <Button onClick={async () => {
                 if (!selectedEquipment) return;
                 if (!rentalForm.diver_id) { alert('Select a diver'); return; }
                 const max = selectedEquipment.quantity_available_for_rent ?? selectedEquipment.quantity_in_stock ?? 0;
@@ -317,9 +320,10 @@ export default function EquipmentPage() {
                   const newAvail = Math.max(0, (selectedEquipment.quantity_available_for_rent || 0) - rentalForm.quantity);
                   await apiClient.equipment.update(selectedEquipment.id, { quantity_available_for_rent: newAvail });
                   await load();
-                  await loadAssignments();
-                  setOpenRental(false);
-                  alert('Rented successfully');
+                      await loadAssignments();
+                      window.dispatchEvent(new Event('rentalAssignmentsUpdated'));
+                      setOpenRental(false);
+                      alert('Rented successfully');
                 } catch (err) {
                   console.error('Create rental failed', err);
                   alert('Failed to create rental');
