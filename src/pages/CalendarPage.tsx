@@ -22,7 +22,6 @@ import { apiClient } from '@/integrations/api/client';
 import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { AssignDiversModal } from '@/components/AssignDiversModal';
-import { useTripAssignments } from '@/hooks/useTripAssignments';
 
 interface CalendarEvent {
   id: string;
@@ -43,6 +42,9 @@ export default function CalendarPage() {
   const [diveSites, setDiveSites] = useState<any[]>([]);
   const [boats, setBoats] = useState<any[]>([]);
   const [instructors, setInstructors] = useState<any[]>([]);
+  const [openAssignModal, setOpenAssignModal] = useState(false);
+  const [selectedTripId, setSelectedTripId] = useState<string>('');
+  const [selectedTripName, setSelectedTripName] = useState<string>('');
   const { trips } = useTrips();
   const { incidents } = useIncidents();
   const { toast } = useToast();
@@ -329,6 +331,20 @@ export default function CalendarPage() {
                   </div>
                 )}
 
+                {selectedEvent.id.startsWith('trip-') && (
+                  <Button 
+                    className="w-full"
+                    onClick={() => {
+                      const tripId = selectedEvent.id.replace('trip-', '');
+                      setSelectedTripId(tripId);
+                      setSelectedTripName(selectedEvent.title.replace('Trip: ', ''));
+                      setOpenAssignModal(true);
+                    }}
+                  >
+                    Assign Divers
+                  </Button>
+                )}
+
                 <Button className="w-full" onClick={() => {
                   if (selectedEvent.rawData) {
                     window.location.href = '/bookings';
@@ -406,6 +422,14 @@ export default function CalendarPage() {
           </Card>
         </div>
       )}
+
+      {/* Assign Divers Modal */}
+      <AssignDiversModal
+        open={openAssignModal}
+        onOpenChange={setOpenAssignModal}
+        tripId={selectedTripId}
+        tripName={selectedTripName}
+      />
     </div>
   );
 }
