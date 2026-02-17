@@ -458,9 +458,9 @@ export default function EquipmentMaintenancePage(props: { initialDiverId?: strin
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Diver</Label>
+                <Label htmlFor="rental-diver">Diver</Label>
                 <Select value={rentalForm.diver_id} onValueChange={(v) => setRentalForm({...rentalForm, diver_id: v})}>
-                  <SelectTrigger>
+                  <SelectTrigger id="rental-diver" name="rental-diver">
                     <SelectValue placeholder="Select diver..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -472,18 +472,18 @@ export default function EquipmentMaintenancePage(props: { initialDiverId?: strin
               </div>
 
               <div>
-                <Label>Quantity</Label>
-                <Input type="number" value={String(rentalForm.quantity)} onChange={(e) => setRentalForm({...rentalForm, quantity: Math.max(1, Number(e.target.value))})} className="w-40" />
+                <Label htmlFor="rental-quantity">Quantity</Label>
+                <Input id="rental-quantity" name="rental-quantity" type="number" value={String(rentalForm.quantity)} onChange={(e) => setRentalForm({...rentalForm, quantity: Math.max(1, Number(e.target.value))})} className="w-40" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Check-in</Label>
-                  <Input type="date" value={rentalForm.check_in} onChange={(e) => setRentalForm({...rentalForm, check_in: e.target.value})} />
+                  <Label htmlFor="rental-checkin">Check-in</Label>
+                  <Input id="rental-checkin" name="rental-checkin" type="date" value={rentalForm.check_in} onChange={(e) => setRentalForm({...rentalForm, check_in: e.target.value})} />
                 </div>
                 <div>
-                  <Label>Check-out</Label>
-                  <Input type="date" value={rentalForm.check_out} onChange={(e) => setRentalForm({...rentalForm, check_out: e.target.value})} />
+                  <Label htmlFor="rental-checkout">Check-out</Label>
+                  <Input id="rental-checkout" name="rental-checkout" type="date" value={rentalForm.check_out} onChange={(e) => setRentalForm({...rentalForm, check_out: e.target.value})} />
                 </div>
               </div>
 
@@ -497,15 +497,21 @@ export default function EquipmentMaintenancePage(props: { initialDiverId?: strin
                   try {
                     // ensure booking exists (use string diver_id)
                     const diverId = rentalForm.diver_id;
+                    console.log('🎯 Creating rental for diverId:', diverId);
                     let bookingId = null;
+                    let selectedBooking = null;
                     try {
                       const allBookings = await apiClient.bookings.list().catch(() => []);
                       const diverBookings = Array.isArray(allBookings) ? allBookings.filter((b: any) => String(b.diver_id) === String(diverId)) : [];
-                      if (diverBookings.length > 0) bookingId = diverBookings[0].id;
-                    } catch (err) {}
+                      if (diverBookings.length > 0) {
+                        selectedBooking = diverBookings[0];
+                        bookingId = selectedBooking.id;
+                      }
+                    } catch (err) { console.error('❌ Error finding bookings:', err); }
 
                     if (!bookingId) {
                       const bk = await apiClient.bookings.create({ diver_id: diverId, check_in: rentalForm.check_in, check_out: rentalForm.check_out });
+                      selectedBooking = bk;
                       bookingId = bk.id;
                     }
 
@@ -538,32 +544,32 @@ export default function EquipmentMaintenancePage(props: { initialDiverId?: strin
               <div className="mb-3 text-lg font-semibold">Rent Equipment{selectedEquipmentForRental ? ` — ${selectedEquipmentForRental.name}` : ''}</div>
               <div className="space-y-4">
                 <div>
-                  <Label>Diver</Label>
-                  <Select value={rentalForm.diver_id} onValueChange={(v) => setRentalForm({...rentalForm, diver_id: v})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select diver..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {divers.map(d => (
-                        <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <Label htmlFor="rental-diver">Diver</Label>
+                <Select value={rentalForm.diver_id} onValueChange={(v) => setRentalForm({...rentalForm, diver_id: v})}>
+                  <SelectTrigger id="rental-diver" name="rental-diver">
+                    <SelectValue placeholder="Select a diver" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {divers.map(d => (
+                      <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 </div>
 
                 <div>
-                  <Label>Quantity</Label>
-                  <Input type="number" value={String(rentalForm.quantity)} onChange={(e) => setRentalForm({...rentalForm, quantity: Math.max(1, Number(e.target.value))})} className="w-40" />
+                  <Label htmlFor="rental-qty-embedded">Quantity</Label>
+                  <Input id="rental-qty-embedded" name="rental-qty-embedded" type="number" value={String(rentalForm.quantity)} onChange={(e) => setRentalForm({...rentalForm, quantity: Math.max(1, Number(e.target.value))})} className="w-40" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label>Check-in</Label>
-                    <Input type="date" value={rentalForm.check_in} onChange={(e) => setRentalForm({...rentalForm, check_in: e.target.value})} />
+                    <Label htmlFor="rental-checkin-embedded">Check-in</Label>
+                    <Input id="rental-checkin-embedded" name="rental-checkin-embedded" type="date" value={rentalForm.check_in} onChange={(e) => setRentalForm({...rentalForm, check_in: e.target.value})} />
                   </div>
                   <div>
-                    <Label>Check-out</Label>
-                    <Input type="date" value={rentalForm.check_out} onChange={(e) => setRentalForm({...rentalForm, check_out: e.target.value})} />
+                    <Label htmlFor="rental-checkout-embedded">Check-out</Label>
+                    <Input id="rental-checkout-embedded" name="rental-checkout-embedded" type="date" value={rentalForm.check_out} onChange={(e) => setRentalForm({...rentalForm, check_out: e.target.value})} />
                   </div>
                 </div>
 
@@ -577,14 +583,19 @@ export default function EquipmentMaintenancePage(props: { initialDiverId?: strin
                     try {
                       const diverId = rentalForm.diver_id;
                       let bookingId = null;
+                      let selectedBooking = null;
                       try {
                         const allBookings = await apiClient.bookings.list().catch(() => []);
                         const diverBookings = Array.isArray(allBookings) ? allBookings.filter((b: any) => String(b.diver_id) === String(diverId)) : [];
-                        if (diverBookings.length > 0) bookingId = diverBookings[0].id;
-                      } catch (err) {}
+                        if (diverBookings.length > 0) {
+                          selectedBooking = diverBookings[0];
+                          bookingId = selectedBooking.id;
+                        }
+                      } catch (err) { console.error('❌ Error finding bookings:', err); }
 
                       if (!bookingId) {
                         const bk = await apiClient.bookings.create({ diver_id: diverId, check_in: rentalForm.check_in, check_out: rentalForm.check_out });
+                        selectedBooking = bk;
                         bookingId = bk.id;
                       }
 
