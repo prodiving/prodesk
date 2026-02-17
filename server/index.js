@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
-import { getDb, initDb } from './db.js';
+import * as dbAdapter from './db-adapter.js';
 
 const app = express();
 
@@ -15,21 +15,27 @@ app.use(cors({
 app.use(express.json());
 
 // Initialize database
-await initDb();
+await dbAdapter.initDb();
 
 // Auto-seed database if empty (ensures Railway has data on startup)
-const db = getDb();
-db.get('SELECT COUNT(*) as count FROM divers', (err, result) => {
-  if (!err && result && result.count === 0) {
-    console.log('📊 Database is empty, auto-seeding with initial data...');
-    seedDatabase();
-  }
-  db.close();
-});
+const db = dbAdapter.getDb();
+if (db && db.get) {
+  // SQLite callback-based
+  db.get('SELECT COUNT(*) as count FROM divers', (err, result) => {
+    if (!err && result && result.count === 0) {
+      console.log('📊 Database is empty, auto-seeding with initial data...');
+      seedDatabase();
+    }
+    db.close();
+  });
+} else {
+  // PostgreSQL async-based (seeding handled separately)
+  console.log('✅ Using PostgreSQL - run migrations separately');
+}
 
 async function seedDatabase() {
   try {
-    const db = getDb();
+    const db = dbAdapter.getDb();
     
     const divers = [
       { name: 'John Smith', email: 'john@example.com' },
@@ -87,7 +93,7 @@ app.get('/health', (req, res) => {
 
 // GET /api/groups - list all groups with leader and members
 app.get('/api/groups', (req, res) => {
-  const db = getDb();
+  const db = dbAdapter.getDb();
 
   db.all(`
     SELECT id, name, type, leader_id, course_id, days, description, created_at FROM groups ORDER BY created_at DESC
@@ -168,7 +174,7 @@ app.post('/api/groups', (req, res) => {
     return res.status(400).json({ error: 'name is required' });
   }
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.run(
     'INSERT INTO groups (id, name, type, leader_id, course_id, days, description) VALUES (?, ?, ?, ?, ?, ?, ?)',
     [id, name, type || 'fundive', leader_id || null, course_id || null, days || null, description || null],
@@ -210,7 +216,7 @@ app.post('/api/groups/:groupId/members', (req, res) => {
     return res.status(400).json({ error: 'diver_id is required' });
   }
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.run(
     'INSERT INTO group_members (id, group_id, diver_id, role) VALUES (?, ?, ?, ?)',
     [id, groupId, diver_id, role || null],
@@ -243,7 +249,7 @@ app.post('/api/groups/:groupId/members', (req, res) => {
 app.delete('/api/groups/:groupId/members/:memberId', (req, res) => {
   const { memberId } = req.params;
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.run('DELETE FROM group_members WHERE id = ?', [memberId], (err) => {
     db.close();
     if (err) return res.status(500).json({ error: err.message });
@@ -253,7 +259,7 @@ app.delete('/api/groups/:groupId/members/:memberId', (req, res) => {
 
 // GET /api/divers - list all divers (for dropdowns)
 app.get('/api/divers', (req, res) => {
-  const db = getDb();
+  const db = dbAdapter.getDb();
 
   db.all('SELECT * FROM divers ORDER BY name ASC', (err, divers) => {
     db.close();
@@ -265,7 +271,7 @@ app.get('/api/divers', (req, res) => {
 // GET /api/divers/:id - get a specific diver
 app.get('/api/divers/:id', (req, res) => {
   const { id } = req.params;
-  const db = getDb();
+  const db = dbAdapter.getDb();
 
   db.get('SELECT * FROM divers WHERE id = ?', [id], (err, diver) => {
     db.close();
@@ -284,7 +290,7 @@ app.post('/api/divers', (req, res) => {
     return res.status(400).json({ error: 'name and email are required' });
   }
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.run(
     `INSERT INTO divers (id, name, email, phone, certification_level, medical_cleared) VALUES (?, ?, ?, ?, ?, ?)`,
     [id, name, email, phone || null, certification_level || null, medical_cleared ? 1 : 0],
@@ -305,7 +311,7 @@ app.post('/api/divers', (req, res) => {
 
 // GET /api/courses - list all courses
 app.get('/api/courses', (req, res) => {
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.all(`
     SELECT c.id, c.name, c.price, c.description, c.duration_days, c.start_date, c.end_date, c.max_students,
            c.instructor_id, i.name as instructor_name,
@@ -343,7 +349,7 @@ app.post('/api/courses', (req, res) => {
     return res.status(400).json({ error: 'name is required' });
   }
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.run(
     `INSERT INTO courses (id, name, price, duration_days, description, instructor_id, boat_id, start_date, end_date, max_students) 
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -386,7 +392,7 @@ app.post('/api/courses', (req, res) => {
 // DELETE /api/courses/:id - delete a course
 app.delete('/api/courses/:id', (req, res) => {
   const { id } = req.params;
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.run('DELETE FROM courses WHERE id = ?', [id], (err) => {
     db.close();
     if (err) return res.status(500).json({ error: err.message });
@@ -396,7 +402,7 @@ app.delete('/api/courses/:id', (req, res) => {
 
 // GET /api/instructors - list all instructors
 app.get('/api/instructors', (req, res) => {
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.all('SELECT id, name, email, phone, certification FROM instructors ORDER BY name ASC', (err, instructors) => {
     db.close();
     if (err) return res.status(500).json({ error: err.message });
@@ -413,7 +419,7 @@ app.post('/api/instructors', (req, res) => {
     return res.status(400).json({ error: 'name is required' });
   }
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.run(
     'INSERT INTO instructors (id, name, email, phone, certification) VALUES (?, ?, ?, ?, ?)',
     [id, name, email || null, phone || null, certification || null],
@@ -433,7 +439,7 @@ app.post('/api/instructors', (req, res) => {
 
 // GET /api/boats - list all boats
 app.get('/api/boats', (req, res) => {
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.all('SELECT id, name, capacity, location FROM boats ORDER BY name ASC', (err, boats) => {
     db.close();
     if (err) return res.status(500).json({ error: err.message });
@@ -450,7 +456,7 @@ app.post('/api/boats', (req, res) => {
     return res.status(400).json({ error: 'name is required' });
   }
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.run(
     'INSERT INTO boats (id, name, capacity, location) VALUES (?, ?, ?, ?)',
     [id, name, capacity || null, location || null],
@@ -470,7 +476,7 @@ app.post('/api/boats', (req, res) => {
 
 // GET /api/accommodations - list all accommodations
 app.get('/api/accommodations', (req, res) => {
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.all('SELECT id, name, price_per_night, tier FROM accommodations ORDER BY name ASC', (err, accs) => {
     db.close();
     if (err) return res.status(500).json({ error: err.message });
@@ -487,7 +493,7 @@ app.post('/api/accommodations', (req, res) => {
     return res.status(400).json({ error: 'name is required' });
   }
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.run(
     'INSERT INTO accommodations (id, name, price_per_night, tier, description) VALUES (?, ?, ?, ?, ?)',
     [id, name, price_per_night || 0, tier || 'standard', description || null],
@@ -507,7 +513,7 @@ app.post('/api/accommodations', (req, res) => {
 
 // GET /api/bookings - list all bookings with related data
 app.get('/api/bookings', (req, res) => {
-  const db = getDb();
+  const db = dbAdapter.getDb();
 
   db.all(`
     SELECT 
@@ -559,7 +565,7 @@ app.get('/api/bookings', (req, res) => {
 
 // GET /api/bookings/stats/last30days - get bookings and revenue for last 30 days
 app.get('/api/bookings/stats/last30days', (req, res) => {
-  const db = getDb();
+  const db = dbAdapter.getDb();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   db.get(`
@@ -590,7 +596,7 @@ app.post('/api/bookings', (req, res) => {
     return res.status(400).json({ error: 'diver_id is required' });
   }
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.run(
     `INSERT INTO bookings (id, diver_id, course_id, group_id, accommodation_id, check_in, check_out, size, weight, height, agent_id, total_amount, invoice_number, payment_status, notes)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'unpaid', ?)`,
@@ -654,7 +660,7 @@ app.patch('/api/bookings/:id', (req, res) => {
   const { id } = req.params;
   const { payment_status } = req.body;
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.run('UPDATE bookings SET payment_status = ? WHERE id = ?', [payment_status, id], (err) => {
     db.close();
     if (err) return res.status(500).json({ error: err.message });
@@ -666,7 +672,7 @@ app.patch('/api/bookings/:id', (req, res) => {
 app.delete('/api/bookings/:id', (req, res) => {
   const { id } = req.params;
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.run('DELETE FROM bookings WHERE id = ?', [id], (err) => {
     db.close();
     if (err) return res.status(500).json({ error: err.message });
@@ -683,7 +689,7 @@ app.put('/api/divers/:id', (req, res) => {
     return res.status(400).json({ error: 'name and email are required' });
   }
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.run(
     `UPDATE divers SET name = ?, email = ?, phone = ?, certification_level = ?, medical_cleared = ?, updated_at = CURRENT_TIMESTAMP
      WHERE id = ?`,
@@ -707,7 +713,7 @@ app.put('/api/divers/:id', (req, res) => {
 app.delete('/api/divers/:id', (req, res) => {
   const { id } = req.params;
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.run('DELETE FROM divers WHERE id = ?', [id], (err) => {
     db.close();
     if (err) return res.status(500).json({ error: err.message });
@@ -724,7 +730,7 @@ app.put('/api/bookings/:id', (req, res) => {
     return res.status(400).json({ error: 'diver_id is required' });
   }
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.run(
     `UPDATE bookings SET diver_id = ?, course_id = ?, group_id = ?, accommodation_id = ?, check_in = ?, check_out = ?, size = ?, weight = ?, height = ?, agent_id = ?, total_amount = ?, payment_status = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
      WHERE id = ?`,
@@ -786,7 +792,7 @@ app.put('/api/bookings/:id', (req, res) => {
 
 // GET /api/waivers - list all waivers
 app.get('/api/waivers', (req, res) => {
-  const db = getDb();
+  const db = dbAdapter.getDb();
 
   db.all(`
     SELECT w.id, w.diver_id, w.status, w.signed_at, w.notes, w.created_at, d.name as diver_name, d.email as diver_email
@@ -803,7 +809,7 @@ app.get('/api/waivers', (req, res) => {
 // GET /api/waivers/:diver_id - get waiver for a specific diver
 app.get('/api/waivers/:diver_id', (req, res) => {
   const { diver_id } = req.params;
-  const db = getDb();
+  const db = dbAdapter.getDb();
 
   db.get(`
     SELECT w.id, w.diver_id, w.document_url, w.signature_data, w.status, w.signed_at, w.notes, w.created_at, d.name as diver_name, d.email as diver_email
@@ -826,7 +832,7 @@ app.post('/api/waivers', (req, res) => {
     return res.status(400).json({ error: 'diver_id is required' });
   }
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
 
   // Check if waiver exists for this diver
   db.get('SELECT id FROM waivers WHERE diver_id = ?', [diver_id], (err, existing) => {
@@ -894,7 +900,7 @@ app.post('/api/waivers', (req, res) => {
 // PATCH /api/divers/:id/onboarding - complete onboarding
 app.patch('/api/divers/:id/onboarding', (req, res) => {
   const { id } = req.params;
-  const db = getDb();
+  const db = dbAdapter.getDb();
 
   db.run(
     `UPDATE divers SET onboarding_completed = 1, onboarding_date = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
@@ -917,7 +923,7 @@ app.patch('/api/divers/:id/onboarding', (req, res) => {
 
 // GET /api/dive-sites - list all dive sites
 app.get('/api/dive-sites', (req, res) => {
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.all('SELECT id, name, location, max_depth, difficulty, description FROM dive_sites ORDER BY name ASC', (err, sites) => {
     db.close();
     if (err) return res.status(500).json({ error: err.message });
@@ -934,7 +940,7 @@ app.post('/api/dive-sites', (req, res) => {
     return res.status(400).json({ error: 'name and location are required' });
   }
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.run(
     `INSERT INTO dive_sites (id, name, location, max_depth, difficulty, description, emergency_contacts, nearest_hospital, dan_info)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -956,7 +962,7 @@ app.post('/api/dive-sites', (req, res) => {
 // DELETE /api/dive-sites/:id - delete a dive site
 app.delete('/api/dive-sites/:id', (req, res) => {
   const { id } = req.params;
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.run('DELETE FROM dive_sites WHERE id = ?', [id], (err) => {
     db.close();
     if (err) return res.status(500).json({ error: err.message });
@@ -967,7 +973,7 @@ app.delete('/api/dive-sites/:id', (req, res) => {
 // GET /api/groups/:id/itinerary - get dive itinerary for a group
 app.get('/api/groups/:id/itinerary', (req, res) => {
   const { id } = req.params;
-  const db = getDb();
+  const db = dbAdapter.getDb();
 
   db.all(`
     SELECT gdi.id, gdi.group_id, gdi.day_number, gdi.dive_site_id, gdi.notes,
@@ -992,7 +998,7 @@ app.post('/api/groups/:id/itinerary', (req, res) => {
     return res.status(400).json({ error: 'day_number is required' });
   }
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   
   // Check if entry exists for this group and day
   db.get('SELECT id FROM group_dive_itinerary WHERE group_id = ? AND day_number = ?', [id, day_number], (err, existing) => {
@@ -1059,7 +1065,7 @@ app.post('/api/groups/:id/itinerary', (req, res) => {
 
 // GET /api/trips - list all trips
 app.get('/api/trips', (req, res) => {
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.all(`
     SELECT t.id, t.name, t.type, t.start_at, t.dive_site_id, t.boat_id, t.captain_id, t.number_of_dives, t.boat_staff, t.products, t.description, t.created_at, t.updated_at,
            ds.name as site_name, ds.location as site_location,
@@ -1086,7 +1092,7 @@ app.post('/api/trips', (req, res) => {
   }
 
   const id = uuidv4();
-  const db = getDb();
+  const db = dbAdapter.getDb();
 
   db.run(
     `INSERT INTO trips (id, name, type, start_at, dive_site_id, boat_id, captain_id, number_of_dives, boat_staff, products, description)
@@ -1121,7 +1127,7 @@ app.post('/api/trips', (req, res) => {
 
 // GET /api/schedules - list all schedules
 app.get('/api/schedules', (req, res) => {
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.all(`
     SELECT id, name, departure_time, departure_location, boat_id, number_of_dives, start_date, end_date, days_ahead, days_of_week, dive_sites, products, created_at, updated_at
     FROM schedules
@@ -1142,7 +1148,7 @@ app.post('/api/schedules', (req, res) => {
   }
 
   const id = uuidv4();
-  const db = getDb();
+  const db = dbAdapter.getDb();
 
   db.run(
     `INSERT INTO schedules (id, name, departure_time, departure_location, boat_id, number_of_dives, start_date, end_date, days_ahead, days_of_week, dive_sites, products)
@@ -1173,7 +1179,7 @@ app.post('/api/schedules', (req, res) => {
 // GET /api/trips/:id/assignments - get all divers assigned to a trip
 app.get('/api/trips/:id/assignments', (req, res) => {
   const { id } = req.params;
-  const db = getDb();
+  const db = dbAdapter.getDb();
 
   db.all(`
     SELECT ta.id, ta.trip_id, ta.diver_id, ta.assigned_at,
@@ -1199,7 +1205,7 @@ app.post('/api/trips/:id/assignments', (req, res) => {
   }
 
   const assignmentId = uuidv4();
-  const db = getDb();
+  const db = dbAdapter.getDb();
 
   db.run(
     `INSERT INTO trip_assignments (id, trip_id, diver_id)
@@ -1229,7 +1235,7 @@ app.post('/api/trips/:id/assignments', (req, res) => {
 // DELETE /api/trips/:id/assignments/:diver_id - unassign a diver from a trip
 app.delete('/api/trips/:id/assignments/:diver_id', (req, res) => {
   const { id, diver_id } = req.params;
-  const db = getDb();
+  const db = dbAdapter.getDb();
 
   db.run(
     `DELETE FROM trip_assignments WHERE trip_id = ? AND diver_id = ?`,
@@ -1246,7 +1252,7 @@ app.delete('/api/trips/:id/assignments/:diver_id', (req, res) => {
 
 // GET /api/equipment - list all equipment
 app.get('/api/equipment', (req, res) => {
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.all('SELECT * FROM equipment ORDER BY category, name', (err, equipment) => {
     db.close();
     if (err) return res.status(500).json({ error: err.message });
@@ -1257,7 +1263,7 @@ app.get('/api/equipment', (req, res) => {
 // GET /api/equipment/:id - get equipment by id
 app.get('/api/equipment/:id', (req, res) => {
   const { id } = req.params;
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.get('SELECT * FROM equipment WHERE id = ?', [id], (err, equipment) => {
     db.close();
     if (err) return res.status(500).json({ error: err.message });
@@ -1270,7 +1276,7 @@ app.post('/api/equipment', (req, res) => {
   const { name, category, sku, price, can_buy, can_rent, rent_price_per_day, quantity_in_stock, quantity_available_for_rent, reorder_level, supplier, description, barcode } = req.body;
   if (!name || !category) return res.status(400).json({ error: 'name and category required' });
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   const id = uuidv4();
   db.run(
     'INSERT INTO equipment (id, name, category, sku, price, can_buy, can_rent, rent_price_per_day, quantity_in_stock, quantity_available_for_rent, reorder_level, supplier, description, barcode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -1294,7 +1300,7 @@ app.put('/api/equipment/:id', (req, res) => {
   const { id } = req.params;
   const { name, category, sku, price, can_buy, can_rent, rent_price_per_day, quantity_in_stock, quantity_available_for_rent, reorder_level, supplier, description, barcode } = req.body;
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.run(
     'UPDATE equipment SET name = ?, category = ?, sku = ?, price = ?, can_buy = ?, can_rent = ?, rent_price_per_day = ?, quantity_in_stock = ?, quantity_available_for_rent = ?, reorder_level = ?, supplier = ?, description = ?, barcode = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
     [name, category, sku || null, price || 0, can_buy !== false ? 1 : 0, can_rent !== false ? 1 : 0, rent_price_per_day || 0, quantity_in_stock || 0, quantity_available_for_rent || 0, reorder_level || 5, supplier || null, description || null, barcode || null, id],
@@ -1320,7 +1326,7 @@ app.delete('/api/equipment/:id', (req, res) => {
     quantity_in_stock, quantity_available_for_rent, reorder_level, supplier, description, barcode
   } = req.body;
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   // Read existing equipment and merge fields to avoid overwriting required NOT NULL columns with null
   db.get('SELECT * FROM equipment WHERE id = ?', [id], (err, existing) => {
     if (err) {
@@ -1362,7 +1368,7 @@ app.delete('/api/equipment/:id', (req, res) => {
 
 // GET /api/transactions - list all transactions
 app.get('/api/transactions', (req, res) => {
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.all(`
     SELECT 
       t.id, t.transaction_number, t.diver_id, t.booking_id, t.type, t.status,
@@ -1383,7 +1389,7 @@ app.get('/api/transactions', (req, res) => {
 // GET /api/transactions/:id - get transaction with items
 app.get('/api/transactions/:id', (req, res) => {
   const { id } = req.params;
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.get(`
     SELECT 
       t.id, t.transaction_number, t.diver_id, t.booking_id, t.type, t.status,
@@ -1426,7 +1432,7 @@ app.post('/api/transactions', (req, res) => {
     return res.status(400).json({ error: 'At least one item required' });
   }
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   const transactionId = uuidv4();
   const transactionNumber = `TXN-${Date.now()}`;
   
@@ -1501,7 +1507,7 @@ app.post('/api/transactions', (req, res) => {
 
 // GET /api/payments - list all payments
 app.get('/api/payments', (req, res) => {
-  const db = getDb();
+  const db = dbAdapter.getDb();
   db.all(`
     SELECT 
       p.id, p.transaction_id, p.amount, p.payment_method, p.payment_status, p.reference_number, p.notes, p.created_at,
@@ -1523,7 +1529,7 @@ app.post('/api/payments', (req, res) => {
     return res.status(400).json({ error: 'transaction_id and amount required' });
   }
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   const id = uuidv4();
   db.run(
     'INSERT INTO payments (id, transaction_id, amount, payment_method, reference_number, notes) VALUES (?, ?, ?, ?, ?, ?)',
@@ -1544,7 +1550,7 @@ app.post('/api/payments', (req, res) => {
 
 // GET /api/pos/summary - get POS summary (daily sales, etc)
 app.get('/api/pos/summary', (req, res) => {
-  const db = getDb();
+  const db = dbAdapter.getDb();
   const today = new Date().toISOString().split('T')[0];
   
   db.all(`
@@ -1577,7 +1583,7 @@ app.get('/api/pos/summary', (req, res) => {
 // GET /api/rental-assignments - list all rental assignments
 app.get('/api/rental-assignments', (req, res) => {
   const { booking_id } = req.query;
-  const db = getDb();
+  const db = dbAdapter.getDb();
   
   let query = `
     SELECT 
@@ -1614,7 +1620,7 @@ app.post('/api/rental-assignments', (req, res) => {
     return res.status(400).json({ error: 'booking_id, equipment_id, check_in, and check_out are required' });
   }
 
-  const db = getDb();
+  const db = dbAdapter.getDb();
   const id = uuidv4();
   
   db.run(
@@ -1647,7 +1653,7 @@ app.post('/api/rental-assignments', (req, res) => {
 // DELETE /api/rental-assignments/:id - delete rental assignment
 app.delete('/api/rental-assignments/:id', (req, res) => {
   const { id } = req.params;
-  const db = getDb();
+  const db = dbAdapter.getDb();
   
   db.run('DELETE FROM rental_assignments WHERE id = ?', [id], (err) => {
     db.close();
@@ -1659,7 +1665,7 @@ app.delete('/api/rental-assignments/:id', (req, res) => {
 // GET /api/finance/summary - get comprehensive financial summary
 app.get('/api/finance/summary', (req, res) => {
   const { startDate, endDate } = req.query;
-  const db = getDb();
+  const db = dbAdapter.getDb();
 
   if (!startDate || !endDate) {
     db.close();
@@ -1775,7 +1781,7 @@ app.get('/api/finance/summary', (req, res) => {
 // GET /api/finance/export - export financial data
 app.get('/api/finance/export', (req, res) => {
   const { startDate, endDate, format } = req.query;
-  const db = getDb();
+  const db = dbAdapter.getDb();
 
   if (!startDate || !endDate || !format) {
     db.close();
