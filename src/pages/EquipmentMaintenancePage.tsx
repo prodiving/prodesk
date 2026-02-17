@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -14,16 +15,22 @@ import {
   Package, DollarSign, Search, Filter, Calendar, Clock
 } from 'lucide-react';
 
-export default function EquipmentMaintenancePage() {
+export default function EquipmentMaintenancePage(props: { initialDiverId?: string, embedded?: boolean, onRentalCreated?: () => void } = {}) {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [edits, setEdits] = useState<Record<string, any>>({});
   const [assignments, setAssignments] = useState<any[]>([]);
   const [divers, setDivers] = useState<any[]>([]);
+  const [searchParams] = useSearchParams();
+  const { initialDiverId } = props;
+  const filterDiverId = initialDiverId ?? searchParams.get('diver_id');
   const [openRental, setOpenRental] = useState(false);
   const [selectedEquipmentForRental, setSelectedEquipmentForRental] = useState<any>(null);
   const [rentalForm, setRentalForm] = useState({ diver_id: '', quantity: 1, check_in: new Date().toISOString().slice(0,10), check_out: new Date(Date.now()+24*60*60*1000).toISOString().slice(0,10) });
   const { toast } = useToast();
+  const embedded = Boolean(props.embedded);
+  const containerClass = embedded ? 'h-[80vh] overflow-auto p-4' : '';
+  const inlineModalRef = useRef<HTMLDivElement | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('inventory');
   const [filter, setFilter] = useState('All');
@@ -56,6 +63,10 @@ export default function EquipmentMaintenancePage() {
   };
 
   useEffect(() => { loadAssignments(); }, []);
+  useEffect(() => {
+    // reload when query param changes
+    loadAssignments();
+  }, [filterDiverId]);
 
   const getStatus = (it: any) => {
     if (typeof it.quantity_available_for_rent === 'number') {
@@ -155,6 +166,8 @@ export default function EquipmentMaintenancePage() {
       console.error('Failed to load divers for rental dialog', err);
       toast({ title: 'Error', description: 'Failed to load divers', variant: 'destructive' });
     }
+    // preselect diver from query param if present
+    if (filterDiverId) setRentalForm((f) => ({ ...f, diver_id: String(filterDiverId) }));
     setOpenRental(true);
   };
 
@@ -184,8 +197,49 @@ export default function EquipmentMaintenancePage() {
     return matchesFilter && matchesSearch;
   });
 
+  useEffect(() => {
+    if (!embedded || !openRental) return;
+    const modal = inlineModalRef.current;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const selector = 'a[href], area[href], input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusable = modal ? Array.from(modal.querySelectorAll<HTMLElement>(selector)) : [];
+    if (focusable.length) {
+      focusable[0].focus();
+    }
+
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setOpenRental(false);
+        e.stopPropagation();
+        return;
+      }
+      if (e.key === 'Tab') {
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKey, true);
+    return () => {
+      document.removeEventListener('keydown', handleKey, true);
+      if (previouslyFocused) previouslyFocused.focus();
+    };
+  }, [embedded, openRental]);
+
   return (
-    <div>
+    <div className={containerClass}>
       <div className="page-header flex items-center justify-between mb-4">
         <div>
           <h1 className="page-title">Equipment Items and Rental - Maintenance</h1>
@@ -348,19 +402,19 @@ export default function EquipmentMaintenancePage() {
       </Card>
 
       {/* Active Rentals */}
-      {assignments.filter(a => a.status === 'active').length > 0 && (
+      {assignments.filter(a => a.status === 'active' && (!filterDiverId || String(a.diver_id) === String(filterDiverId))).length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Active Rentals</CardTitle>
+            <CardTitle>Active Rentals {filterDiverId && `(${filterDiverId})`}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {assignments.filter(a => a.status === 'active').map((assignment) => (
+              {assignments.filter(a => a.status === 'active' && (!filterDiverId || String(a.diver_id) === String(filterDiverId))).map((assignment) => (
                 <div key={assignment.id} className="flex items-center justify-between p-3 border rounded">
                   <div>
                     <p className="font-medium">{assignment.equipment_name}</p>
                     <p className="text-sm text-muted-foreground">
-                      Qty: {assignment.quantity} | {assignment.check_in} to {assignment.check_out}
+                      Diver: {assignment.diver_name || 'Unknown'} | Qty: {assignment.quantity} | {assignment.check_in} to {assignment.check_out}
                     </p>
                   </div>
                   <Button
@@ -377,84 +431,185 @@ export default function EquipmentMaintenancePage() {
         </Card>
       )}
 
+      {/* Debug: Show ALL active rentals if embedded and filtering */}
+      {embedded && filterDiverId && assignments.filter(a => a.status === 'active').length > 0 && (
+        <Card className="bg-muted/50 border-dashed">
+          <CardHeader>
+            <CardTitle className="text-sm">Debug: All Active Rentals</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 text-xs">
+              {assignments.filter(a => a.status === 'active').map((a) => (
+                <div key={a.id} className="p-2 bg-background rounded border">
+                  <p><strong>{a.equipment_name}</strong> → {a.diver_name || `diver_id: ${a.diver_id}`}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Rental Dialog */}
-      <Dialog open={openRental} onOpenChange={setOpenRental}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Rent Equipment{selectedEquipmentForRental ? ` — ${selectedEquipmentForRental.name}` : ''}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Diver</Label>
-              <Select value={rentalForm.diver_id} onValueChange={(v) => setRentalForm({...rentalForm, diver_id: v})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select diver..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {divers.map(d => (
-                    <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Quantity</Label>
-              <Input type="number" value={String(rentalForm.quantity)} onChange={(e) => setRentalForm({...rentalForm, quantity: Math.max(1, Number(e.target.value))})} className="w-40" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+      {!embedded ? (
+        <Dialog open={openRental} onOpenChange={setOpenRental}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Rent Equipment{selectedEquipmentForRental ? ` — ${selectedEquipmentForRental.name}` : ''}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
               <div>
-                <Label>Check-in</Label>
-                <Input type="date" value={rentalForm.check_in} onChange={(e) => setRentalForm({...rentalForm, check_in: e.target.value})} />
+                <Label>Diver</Label>
+                <Select value={rentalForm.diver_id} onValueChange={(v) => setRentalForm({...rentalForm, diver_id: v})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select diver..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {divers.map(d => (
+                      <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div>
-                <Label>Check-out</Label>
-                <Input type="date" value={rentalForm.check_out} onChange={(e) => setRentalForm({...rentalForm, check_out: e.target.value})} />
-              </div>
-            </div>
 
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setOpenRental(false)}>Cancel</Button>
-              <Button onClick={async () => {
-                if (!selectedEquipmentForRental) return;
-                if (!rentalForm.diver_id) { toast({ title: 'Error', description: 'Select a diver', variant: 'destructive' }); return; }
-                const max = selectedEquipmentForRental.quantity_available_for_rent ?? selectedEquipmentForRental.quantity_in_stock ?? 0;
-                if (rentalForm.quantity > max) { toast({ title: 'Error', description: 'Not enough available units', variant: 'destructive' }); return; }
-                try {
-                  // ensure booking exists (use string diver_id)
-                  const diverId = rentalForm.diver_id;
-                  let bookingId = null;
+              <div>
+                <Label>Quantity</Label>
+                <Input type="number" value={String(rentalForm.quantity)} onChange={(e) => setRentalForm({...rentalForm, quantity: Math.max(1, Number(e.target.value))})} className="w-40" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Check-in</Label>
+                  <Input type="date" value={rentalForm.check_in} onChange={(e) => setRentalForm({...rentalForm, check_in: e.target.value})} />
+                </div>
+                <div>
+                  <Label>Check-out</Label>
+                  <Input type="date" value={rentalForm.check_out} onChange={(e) => setRentalForm({...rentalForm, check_out: e.target.value})} />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setOpenRental(false)}>Cancel</Button>
+                <Button onClick={async () => {
+                  if (!selectedEquipmentForRental) return;
+                  if (!rentalForm.diver_id) { toast({ title: 'Error', description: 'Select a diver', variant: 'destructive' }); return; }
+                  const max = selectedEquipmentForRental.quantity_available_for_rent ?? selectedEquipmentForRental.quantity_in_stock ?? 0;
+                  if (rentalForm.quantity > max) { toast({ title: 'Error', description: 'Not enough available units', variant: 'destructive' }); return; }
                   try {
-                    const allBookings = await apiClient.bookings.list().catch(() => []);
-                    const diverBookings = Array.isArray(allBookings) ? allBookings.filter((b: any) => String(b.diver_id) === String(diverId)) : [];
-                    if (diverBookings.length > 0) bookingId = diverBookings[0].id;
-                  } catch (err) {}
+                    // ensure booking exists (use string diver_id)
+                    const diverId = rentalForm.diver_id;
+                    let bookingId = null;
+                    try {
+                      const allBookings = await apiClient.bookings.list().catch(() => []);
+                      const diverBookings = Array.isArray(allBookings) ? allBookings.filter((b: any) => String(b.diver_id) === String(diverId)) : [];
+                      if (diverBookings.length > 0) bookingId = diverBookings[0].id;
+                    } catch (err) {}
 
-                  if (!bookingId) {
-                    const bk = await apiClient.bookings.create({ diver_id: diverId, check_in: rentalForm.check_in, check_out: rentalForm.check_out });
-                    bookingId = bk.id;
+                    if (!bookingId) {
+                      const bk = await apiClient.bookings.create({ diver_id: diverId, check_in: rentalForm.check_in, check_out: rentalForm.check_out });
+                      bookingId = bk.id;
+                    }
+
+                    await apiClient.rentalAssignments.create({ booking_id: bookingId, equipment_id: selectedEquipmentForRental.id, quantity: rentalForm.quantity, check_in: rentalForm.check_in, check_out: rentalForm.check_out });
+                    const newAvail = Math.max(0, (selectedEquipmentForRental.quantity_available_for_rent || 0) - rentalForm.quantity);
+                    const existingEq = items.find(i => i.id === selectedEquipmentForRental.id) || selectedEquipmentForRental;
+                    const merged = { ...existingEq, quantity_available_for_rent: newAvail };
+                    await apiClient.equipment.update(selectedEquipmentForRental.id, merged);
+                    await load();
+                    await loadAssignments();
+                    if (props.onRentalCreated) props.onRentalCreated();
+                    window.dispatchEvent(new Event('rentalAssignmentsUpdated'));
+                    setOpenRental(false);
+                    toast({ title: 'Rented', description: `Rented ${rentalForm.quantity} x ${selectedEquipmentForRental.name}` });
+                  } catch (err) {
+                    console.error('Create rental failed', err);
+                    toast({ title: 'Error', description: String(err), variant: 'destructive' });
                   }
+                }}>Create Rental</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+        ) : (
+        // Embedded inline modal to avoid nested Dialog conflicts
+        openRental && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setOpenRental(false)} />
+            <div ref={inlineModalRef} role="dialog" aria-modal="true" aria-label={selectedEquipmentForRental ? `Rent ${selectedEquipmentForRental.name}` : 'Rent equipment'} className="bg-card rounded-lg p-3 max-w-lg w-full max-h-[80vh] overflow-auto z-50">
+              <div className="mb-3 text-lg font-semibold">Rent Equipment{selectedEquipmentForRental ? ` — ${selectedEquipmentForRental.name}` : ''}</div>
+              <div className="space-y-4">
+                <div>
+                  <Label>Diver</Label>
+                  <Select value={rentalForm.diver_id} onValueChange={(v) => setRentalForm({...rentalForm, diver_id: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select diver..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {divers.map(d => (
+                        <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                  await apiClient.rentalAssignments.create({ booking_id: bookingId, equipment_id: selectedEquipmentForRental.id, quantity: rentalForm.quantity, check_in: rentalForm.check_in, check_out: rentalForm.check_out });
-                  const newAvail = Math.max(0, (selectedEquipmentForRental.quantity_available_for_rent || 0) - rentalForm.quantity);
-                  const existingEq = items.find(i => i.id === selectedEquipmentForRental.id) || selectedEquipmentForRental;
-                  const merged = { ...existingEq, quantity_available_for_rent: newAvail };
-                  await apiClient.equipment.update(selectedEquipmentForRental.id, merged);
-                  await load();
-                  await loadAssignments();
-                  window.dispatchEvent(new Event('rentalAssignmentsUpdated'));
-                  setOpenRental(false);
-                  toast({ title: 'Rented', description: `Rented ${rentalForm.quantity} x ${selectedEquipmentForRental.name}` });
-                } catch (err) {
-                  console.error('Create rental failed', err);
-                  toast({ title: 'Error', description: String(err), variant: 'destructive' });
-                }
-              }}>Create Rental</Button>
+                <div>
+                  <Label>Quantity</Label>
+                  <Input type="number" value={String(rentalForm.quantity)} onChange={(e) => setRentalForm({...rentalForm, quantity: Math.max(1, Number(e.target.value))})} className="w-40" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Check-in</Label>
+                    <Input type="date" value={rentalForm.check_in} onChange={(e) => setRentalForm({...rentalForm, check_in: e.target.value})} />
+                  </div>
+                  <div>
+                    <Label>Check-out</Label>
+                    <Input type="date" value={rentalForm.check_out} onChange={(e) => setRentalForm({...rentalForm, check_out: e.target.value})} />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setOpenRental(false)}>Cancel</Button>
+                  <Button onClick={async () => {
+                    if (!selectedEquipmentForRental) return;
+                    if (!rentalForm.diver_id) { toast({ title: 'Error', description: 'Select a diver', variant: 'destructive' }); return; }
+                    const max = selectedEquipmentForRental.quantity_available_for_rent ?? selectedEquipmentForRental.quantity_in_stock ?? 0;
+                    if (rentalForm.quantity > max) { toast({ title: 'Error', description: 'Not enough available units', variant: 'destructive' }); return; }
+                    try {
+                      const diverId = rentalForm.diver_id;
+                      let bookingId = null;
+                      try {
+                        const allBookings = await apiClient.bookings.list().catch(() => []);
+                        const diverBookings = Array.isArray(allBookings) ? allBookings.filter((b: any) => String(b.diver_id) === String(diverId)) : [];
+                        if (diverBookings.length > 0) bookingId = diverBookings[0].id;
+                      } catch (err) {}
+
+                      if (!bookingId) {
+                        const bk = await apiClient.bookings.create({ diver_id: diverId, check_in: rentalForm.check_in, check_out: rentalForm.check_out });
+                        bookingId = bk.id;
+                      }
+
+                      await apiClient.rentalAssignments.create({ booking_id: bookingId, equipment_id: selectedEquipmentForRental.id, quantity: rentalForm.quantity, check_in: rentalForm.check_in, check_out: rentalForm.check_out });
+                      const newAvail = Math.max(0, (selectedEquipmentForRental.quantity_available_for_rent || 0) - rentalForm.quantity);
+                      const existingEq = items.find(i => i.id === selectedEquipmentForRental.id) || selectedEquipmentForRental;
+                      const merged = { ...existingEq, quantity_available_for_rent: newAvail };
+                      await apiClient.equipment.update(selectedEquipmentForRental.id, merged);
+                      await load();
+                      await loadAssignments();
+                      if (props.onRentalCreated) props.onRentalCreated();
+                      window.dispatchEvent(new Event('rentalAssignmentsUpdated'));
+                      setOpenRental(false);
+                      toast({ title: 'Rented', description: `Rented ${rentalForm.quantity} x ${selectedEquipmentForRental.name}` });
+                    } catch (err) {
+                      console.error('Create rental failed', err);
+                      toast({ title: 'Error', description: String(err), variant: 'destructive' });
+                    }
+                  }}>Create Rental</Button>
+                </div>
+              </div>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        )
+      )}
     </div>
   );
 }

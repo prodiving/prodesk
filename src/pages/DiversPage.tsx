@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit2, CheckCircle, Clock, Download, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiClient } from "@/integrations/api/client";
+import EquipmentMaintenancePage from '@/pages/EquipmentMaintenancePage';
 import { useToast } from "@/hooks/use-toast";
 
 const certificationOptions = [
@@ -48,6 +50,8 @@ export default function DiversPage() {
     notes: "",
   });
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [openEquipmentModal, setOpenEquipmentModal] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -212,6 +216,17 @@ export default function DiversPage() {
 
   return (
     <div>
+      <Dialog open={openEquipmentModal} onOpenChange={setOpenEquipmentModal}>
+        <DialogContent className="max-w-6xl w-full p-0">
+          <div className="h-screen">
+            <EquipmentMaintenancePage 
+              initialDiverId={selectedDiver?.id} 
+              embedded={true}
+              onRentalCreated={() => { if (selectedDiver) loadDiverDetails(selectedDiver); }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
       <div className="page-header flex items-center justify-between">
         <div>
           <h1 className="page-title">Divers</h1>
@@ -544,7 +559,7 @@ export default function DiversPage() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">Equipment Rentals</h3>
                 <div>
-                  <Button size="sm" onClick={() => window.location.href = '/equipment'}>
+                  <Button size="sm" onClick={() => setOpenEquipmentModal(true)}>
                     Manage Equipment
                   </Button>
                 </div>

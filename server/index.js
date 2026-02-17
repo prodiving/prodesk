@@ -1303,6 +1303,10 @@ app.delete('/api/equipment/:id', (req, res) => {
       }
     );
   });
+});
+
+// GET /api/transactions - list all transactions
+app.get('/api/transactions', (req, res) => {
   const db = getDb();
   db.all(`
     SELECT 
