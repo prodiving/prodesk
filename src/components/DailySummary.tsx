@@ -1,15 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Users, MapPin, Clock } from 'lucide-react';
+import { apiClient } from "@/integrations/api/client";
 
 interface DiveTrip {
+  id: string;
   time: string;
   count: number;
   diver: string;
   location: string;
+}
+
+interface Diver {
+  id: string;
+  name: string;
+  level?: string;
+  certification_level?: string;
 }
 
 interface DailySummaryProps {
@@ -19,22 +28,61 @@ interface DailySummaryProps {
 
 export default function DailySummary({ currentDate: propCurrentDate, onDateChange }: DailySummaryProps) {
   const navigate = useNavigate();
-  const [internalCurrentDate, setInternalCurrentDate] = useState(new Date(2026, 1, 16)); // February 16, 2026
+  const [internalCurrentDate, setInternalCurrentDate] = useState(new Date());
   const currentDate = propCurrentDate || internalCurrentDate;
   const setCurrentDate = onDateChange || setInternalCurrentDate;
+  const [todayTrips, setTodayTrips] = useState<DiveTrip[]>([]);
+  const [unassignedDivers, setUnassignedDivers] = useState<Diver[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Sample dive trip data
-  const todayTrips: DiveTrip[] = [
-    { time: '9:00 AM', count: 1, diver: 'Peter Greaney', location: 'Ghost Bay' },
-    { time: '11:30 AM', count: 3, diver: 'Multiple divers', location: 'Coral Reef' },
-    { time: '2:00 PM', count: 2, diver: 'Sarah & Mike', location: 'Deep Wall' },
-  ];
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        const [bookingsRes, diversRes] = await Promise.all([
+          apiClient.bookings.list().catch(() => []),
+          apiClient.divers.list().catch(() => []),
+        ]);
 
-  const unassignedDivers = [
-    { name: 'John Smith', level: 'Advanced' },
-    { name: 'Emily Davis', level: 'Open Water' },
-    { name: 'Michael Chen', level: 'Rescue' },
-  ];
+        // Filter bookings for today
+        const today = new Date(currentDate);
+        const todayStr = today.toISOString().split('T')[0];
+        
+        const todayBookings = Array.isArray(bookingsRes) ? 
+          bookingsRes.filter((b: any) => b.check_in?.startsWith(todayStr)) : 
+          [];
+
+        // Group by time and location
+        const trips: DiveTrip[] = todayBookings.map((booking: any, index: number) => ({
+          id: booking.id,
+          time: booking.check_in ? new Date(booking.check_in).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+          count: 1,
+          diver: booking.divers?.name || 'Unknown',
+          location: 'Dive Site', // Would need more info from API
+        }));
+
+        setTodayTrips(trips);
+
+        // Unassigned divers (sample - ideally would come from a separate API endpoint)
+        const allDivers = Array.isArray(diversRes) ? diversRes : [];
+        const assignedDiverIds = new Set(todayBookings.map((b: any) => b.diver_id));
+        const unassigned = allDivers
+          .filter((d: any) => !assignedDiverIds.has(d.id))
+          .slice(0, 5)
+          .map((d: any) => ({
+            id: d.id,
+            name: d.name,
+            level: d.certification_level || 'Certified',
+          }));
+
+        setUnassignedDivers(unassigned);
+      } catch (err) {
+        console.error('Failed to load daily summary', err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [currentDate]);
 
   const navigateDate = (direction: 'prev' | 'next') => {
     setCurrentDate(prev => {
@@ -63,6 +111,18 @@ export default function DailySummary({ currentDate: propCurrentDate, onDateChang
 
   const totalDivers = todayTrips.reduce((sum, trip) => sum + trip.count, 0);
   const totalUnassigned = unassignedDivers.length;
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <p className="text-muted-foreground">Loading today's summary...</p>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
