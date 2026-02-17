@@ -2,22 +2,38 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { apiClient } from '@/integrations/api/client';
 import { Trash2, Plus, Save } from 'lucide-react';
 
 export default function EquipmentPage() {
   const [items, setItems] = useState<any[]>([]);
+  const [divers, setDivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [edits, setEdits] = useState<Record<string, any>>({});
   const [assignments, setAssignments] = useState<any[]>([]);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [openRental, setOpenRental] = useState(false);
+  const [selectedEquipment, setSelectedEquipment] = useState<any>(null);
+  const [rentalForm, setRentalForm] = useState({
+    diver_id: '',
+    quantity: 1,
+    check_in: new Date().toISOString().slice(0, 10),
+    check_out: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+  });
 
   const load = async () => {
     setLoading(true);
     try {
-      const data = await apiClient.equipment.list();
-      setItems(Array.isArray(data) ? data : []);
-      console.log('Equipment loaded:', data);
+      const [equipmentData, diverData] = await Promise.all([
+        apiClient.equipment.list().catch(() => []),
+        apiClient.divers.list().catch(() => []),
+      ]);
+      setItems(Array.isArray(equipmentData) ? equipmentData : []);
+      setDivers(Array.isArray(diverData) ? diverData : []);
+      console.log('Equipment loaded:', equipmentData);
     } catch (err) {
       console.error('Failed to load equipment', err);
       setItems([]);
@@ -30,7 +46,7 @@ export default function EquipmentPage() {
 
   const loadAssignments = async () => {
     try {
-      const data = await apiClient.rentalAssignments.list();
+      const data = await apiClient.rentalAssignments.list('');
       setAssignments(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to load assignments', err);

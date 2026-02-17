@@ -26,7 +26,10 @@ export default function DiversPage() {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedDiver, setSelectedDiver] = useState<any>(null);
+  const [selectedDiverBookings, setSelectedDiverBookings] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("summary");
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<any>({});
   const [form, setForm] = useState({
     first_name: "",
     middle_name: "",
@@ -55,6 +58,19 @@ export default function DiversPage() {
       toast({ title: "Error", description: String(err), variant: "destructive" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadDiverDetails = async (diver: any) => {
+    try {
+      // Fetch bookings for this diver
+      const allBookings = await apiClient.bookings.list().catch(() => []);
+      const diverBookings = Array.isArray(allBookings) ? 
+        allBookings.filter((b: any) => b.diver_id === diver.id || b.divers?.id === diver.id) : 
+        [];
+      setSelectedDiverBookings(diverBookings);
+    } catch (err) {
+      console.error('Failed to load diver bookings', err);
     }
   };
 
@@ -92,6 +108,42 @@ export default function DiversPage() {
       setSelectedDiver(null);
     }
     setOpen(true);
+  };
+
+  const handleSelectDiver = (diver: any) => {
+    setSelectedDiver(diver);
+    loadDiverDetails(diver);
+    setActiveTab("summary");
+  };
+
+  const startEditingField = (field: string, currentValue: any) => {
+    setEditingField(field);
+    setEditValues({ ...editValues, [field]: currentValue });
+  };
+
+  const saveFieldEdit = async (field: string) => {
+    if (!selectedDiver) return;
+    try {
+      const updateData: any = {};
+      updateData[field] = editValues[field];
+      
+      // For full payload, include all current diver data to avoid API rejecting partial updates
+      const fullPayload = {
+        ...selectedDiver,
+        ...updateData,
+        medical_cleared: selectedDiver.medical_cleared === 1 || selectedDiver.medical_cleared === true ? 1 : 0,
+      };
+      
+      await apiClient.divers.update(selectedDiver.id, fullPayload);
+      const updatedDiver = { ...selectedDiver, [field]: editValues[field] };
+      setSelectedDiver(updatedDiver);
+      setEditingField(null);
+      toast({ title: "Success", description: "Updated successfully" });
+      load();
+    } catch (err) {
+      console.error('Save error:', err);
+      toast({ title: "Error", description: String(err), variant: "destructive" });
+    }
   };
 
   const handleSubmit = async () => {
@@ -375,15 +427,68 @@ export default function DiversPage() {
               <div className="space-y-3">
                 <div>
                   <Label>Full Name</Label>
-                  <Input value={selectedDiver.name} readOnly />
+                  {editingField === 'name' ? (
+                    <div className="flex gap-2">
+                      <Input value={editValues.name} onChange={(e) => setEditValues({...editValues, name: e.target.value})} />
+                      <Button size="sm" onClick={() => saveFieldEdit('name')}>Save</Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditingField(null)}>Cancel</Button>
+                    </div>
+                  ) : (
+                    <Button variant="link" className="p-0 h-auto" onClick={() => startEditingField('name', selectedDiver.name)}>
+                      <Input value={selectedDiver.name} readOnly className="cursor-pointer" />
+                    </Button>
+                  )}
                 </div>
                 <div>
-                  <Label>Date of Birth</Label>
-                  <Input placeholder="Not provided" readOnly />
+                  <Label>Email</Label>
+                  {editingField === 'email' ? (
+                    <div className="flex gap-2">
+                      <Input value={editValues.email} onChange={(e) => setEditValues({...editValues, email: e.target.value})} />
+                      <Button size="sm" onClick={() => saveFieldEdit('email')}>Save</Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditingField(null)}>Cancel</Button>
+                    </div>
+                  ) : (
+                    <Button variant="link" className="p-0 h-auto" onClick={() => startEditingField('email', selectedDiver.email)}>
+                      <Input value={selectedDiver.email} readOnly className="cursor-pointer" />
+                    </Button>
+                  )}
                 </div>
                 <div>
-                  <Label>Address</Label>
-                  <Input placeholder="Not provided" readOnly />
+                  <Label>Phone</Label>
+                  {editingField === 'phone' ? (
+                    <div className="flex gap-2">
+                      <Input value={editValues.phone || ''} onChange={(e) => setEditValues({...editValues, phone: e.target.value})} />
+                      <Button size="sm" onClick={() => saveFieldEdit('phone')}>Save</Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditingField(null)}>Cancel</Button>
+                    </div>
+                  ) : (
+                    <Button variant="link" className="p-0 h-auto" onClick={() => startEditingField('phone', selectedDiver.phone)}>
+                      <Input value={selectedDiver.phone || ''} readOnly className="cursor-pointer" />
+                    </Button>
+                  )}
+                </div>
+                <div>
+                  <Label>Certification Level</Label>
+                  {editingField === 'certification_level' ? (
+                    <div className="flex gap-2">
+                      <Select value={editValues.certification_level || ''} onValueChange={(v) => setEditValues({...editValues, certification_level: v})}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {certificationOptions.map((c) => (
+                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button size="sm" onClick={() => saveFieldEdit('certification_level')}>Save</Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditingField(null)}>Cancel</Button>
+                    </div>
+                  ) : (
+                    <Button variant="link" className="p-0 h-auto" onClick={() => startEditingField('certification_level', selectedDiver.certification_level)}>
+                      <Input value={selectedDiver.certification_level || ''} readOnly className="cursor-pointer" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </Card>
@@ -395,15 +500,29 @@ export default function DiversPage() {
               <div className="space-y-3">
                 <div>
                   <Label>Email</Label>
-                  <Input value={selectedDiver.email} readOnly />
+                  {editingField === 'email' ? (
+                    <div className="flex gap-2">
+                      <Input value={editValues.email} onChange={(e) => setEditValues({...editValues, email: e.target.value})} />
+                      <Button size="sm" onClick={() => saveFieldEdit('email')}>Save</Button>
+                    </div>
+                  ) : (
+                    <Button variant="link" className="p-0 h-auto" onClick={() => startEditingField('email', selectedDiver.email)}>
+                      <Input value={selectedDiver.email} readOnly className="cursor-pointer" />
+                    </Button>
+                  )}
                 </div>
                 <div>
                   <Label>Phone</Label>
-                  <Input value={selectedDiver.phone || ''} readOnly />
-                </div>
-                <div>
-                  <Label>Emergency Contact</Label>
-                  <Input placeholder="Not provided" readOnly />
+                  {editingField === 'phone' ? (
+                    <div className="flex gap-2">
+                      <Input value={editValues.phone || ''} onChange={(e) => setEditValues({...editValues, phone: e.target.value})} />
+                      <Button size="sm" onClick={() => saveFieldEdit('phone')}>Save</Button>
+                    </div>
+                  ) : (
+                    <Button variant="link" className="p-0 h-auto" onClick={() => startEditingField('phone', selectedDiver.phone)}>
+                      <Input value={selectedDiver.phone || ''} readOnly className="cursor-pointer" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </Card>
@@ -411,41 +530,115 @@ export default function DiversPage() {
 
           <TabsContent value="equipment" className="space-y-4">
             <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Equipment</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Equipment Rentals</h3>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Equipment
+                </Button>
+              </div>
               <div className="text-center py-8 text-muted-foreground">
                 <ShoppingCart className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Equipment rental history and assignments will be shown here.</p>
-                <Button className="mt-4" onClick={() => window.location.href = '/equipment-maintenance'}>
-                  View Equipment Management
-                </Button>
+                <p>No equipment rentals yet. Add rentals to track equipment usage for this diver.</p>
               </div>
             </Card>
           </TabsContent>
 
           <TabsContent value="courses" className="space-y-4">
             <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Courses</h3>
-              <div className="text-center py-8 text-muted-foreground">
-                <p>Course enrollment and certification history will be shown here.</p>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Courses & Certifications</h3>
               </div>
+              {selectedDiverBookings.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No courses booked yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedDiverBookings.map((booking: any) => (
+                    <div key={booking.id} className="border rounded p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium">{booking.courses?.name || 'Fun Dive'}</h4>
+                          <p className="text-sm text-muted-foreground">Check-in: {new Date(booking.check_in).toLocaleDateString()}</p>
+                          <p className="text-sm text-muted-foreground">Instructor: {booking.instructor?.name || 'N/A'}</p>
+                          {booking.courses?.description && (
+                            <p className="text-sm text-muted-foreground mt-2">{booking.courses.description}</p>
+                          )}
+                        </div>
+                        <Badge variant="outline">
+                          {booking.payment_status === 'paid' ? 'Completed' : 'Pending'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
           </TabsContent>
 
           <TabsContent value="trips" className="space-y-4">
             <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Trips</h3>
-              <div className="text-center py-8 text-muted-foreground">
-                <p>Dive trips and excursions will be shown here.</p>
-              </div>
+              <h3 className="text-lg font-semibold mb-4">Bookings & Trips</h3>
+              {selectedDiverBookings.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No bookings found for this diver.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedDiverBookings.map((booking: any) => (
+                    <div key={booking.id} className="border rounded p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium">{booking.courses?.name || 'Fun Dive'}</h4>
+                          <p className="text-sm text-muted-foreground">Check-in: {new Date(booking.check_in).toLocaleDateString()}</p>
+                          <p className="text-sm text-muted-foreground">Check-out: {booking.check_out ? new Date(booking.check_out).toLocaleDateString() : 'N/A'}</p>
+                          <p className="text-sm text-muted-foreground">Agent: {booking.agent?.name || 'N/A'}</p>
+                        </div>
+                        <Badge variant={booking.payment_status === 'paid' ? 'default' : 'outline'}>
+                          {booking.payment_status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
           </TabsContent>
 
           <TabsContent value="invoices" className="space-y-4">
             <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Invoices</h3>
-              <div className="text-center py-8 text-muted-foreground">
-                <p>Payment history and invoices will be shown here.</p>
-              </div>
+              <h3 className="text-lg font-semibold mb-4">Invoices & Payments</h3>
+              {selectedDiverBookings.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No payment history for this diver.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedDiverBookings.map((booking: any) => (
+                    <div key={booking.id} className="border rounded p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium">Invoice #{booking.id?.slice(0, 8)}</h4>
+                          <p className="text-sm text-muted-foreground">Course: {booking.courses?.name || 'Fun Dive'}</p>
+                          <p className="text-sm text-muted-foreground">Date: {new Date(booking.check_in).toLocaleDateString()}</p>
+                          <p className="text-sm text-muted-foreground">Amount: ${booking.total_amount || 0}</p>
+                        </div>
+                        <div className="text-right">
+                          <Badge variant={booking.payment_status === 'paid' ? 'default' : 'destructive'}>
+                            {booking.payment_status?.toUpperCase() || 'PENDING'}
+                          </Badge>
+                          {booking.payment_date && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Paid: {new Date(booking.payment_date).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
           </TabsContent>
 
@@ -492,7 +685,7 @@ export default function DiversPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {divers.map((diver) => (
-            <Card key={diver.id} className="p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedDiver(diver)}>
+            <Card key={diver.id} className="p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleSelectDiver(diver)}>
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <h3 className="font-semibold">{diver.name}</h3>
