@@ -41,8 +41,6 @@ import ReportsPage from "@/pages/ReportsPage";
 import PayrollPage from "@/pages/PayrollPage";
 import SuppliersPage from "@/pages/SuppliersPage";
 import EquipmentMaintenancePage from "@/pages/EquipmentMaintenancePage";
-import WeChatIntegrationPage from "@/pages/WeChatIntegrationPage";
-import WhatsAppIntegrationPage from "@/pages/WhatsAppIntegrationPage";
 import FormsElearningPage from "@/pages/FormsElearningPage";
 
 const queryClient = new QueryClient();
@@ -66,8 +64,6 @@ function ProtectedRoutes() {
         <Route path="/courses" element={<CoursesPage />} />
         <Route path="/bookings" element={<BookingsPage />} />
         <Route path="/equipment-maintenance" element={<EquipmentMaintenancePage />} />
-        <Route path="/wechat-integration" element={<WeChatIntegrationPage />} />
-        <Route path="/whatsapp-integration" element={<WhatsAppIntegrationPage />} />
         <Route path="/forms-elearning" element={<FormsElearningPage />} />
         {/* POS removed — inventory remains at /inventory */}
         <Route path="/trips" element={<TripsPage />} />

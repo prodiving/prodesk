@@ -30,8 +30,6 @@ const mainLinks = [
   { to: "/incidents", label: "Incidents", icon: AlertTriangle },
   { to: "/groups", label: "Groups", icon: UserCheck },
   { to: "/emergency", label: "Emergency", icon: AlertTriangle },
-  { to: "/wechat-integration", label: "WeChat", icon: MessageCircle },
-  { to: "/whatsapp-integration", label: "WhatsApp", icon: Phone },
 ];
 
 
