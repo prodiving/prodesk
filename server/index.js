@@ -99,6 +99,12 @@ async function seedDatabase() {
 function authMiddleware(req, res, next) {
   // Use client IP as userId for IP-based "login"
   const clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.connection.remoteAddress || req.socket.remoteAddress || 'unknown';
+  
+  // Allow only IPs starting with 'localhost', '127.', or '192.'
+  if (!clientIP.startsWith('localhost') && !clientIP.startsWith('127.') && !clientIP.startsWith('192.')) {
+    return res.status(403).send('Access denied: IP not allowed');
+  }
+  
   req.userId = clientIP.replace(/\./g, '-').replace(/:/g, '-'); // Normalize for use as ID
   next();
 }
