@@ -20,6 +20,7 @@ const mainLinks = [
   { to: "/divers", label: "Divers", icon: Users },
   { to: "/dive-sites", label: "Dive Sites", icon: MapPin },
   { to: "/staff", label: "Staff", icon: UserCheck },
+  { to: "/staff-calendar", label: "Staff Calendar", icon: Calendar },
   { to: "/boats", label: "Boats", icon: Ship },
   { to: "/courses", label: "Courses", icon: GraduationCap },
   { to: "/bookings", label: "Bookings & Invoices", icon: FileText },

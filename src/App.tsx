@@ -13,6 +13,7 @@ import DiveLogsPage from "@/pages/DiveLogsPage";
 import DiversPage from "@/pages/DiversPage";
 import DiveSitesPage from "@/pages/DiveSitesPage";
 import StaffPage from "@/pages/StaffPage";
+import StaffCalendarPage from "@/pages/StaffCalendarPage";
 import BoatsPage from "@/pages/BoatsPage";
 import CoursesPage from "@/pages/CoursesPage";
 import BookingsPage from "@/pages/BookingsPage";
@@ -60,6 +61,7 @@ function ProtectedRoutes() {
         <Route path="/divers" element={<DiversPage />} />
         <Route path="/dive-sites" element={<DiveSitesPage />} />
         <Route path="/staff" element={<StaffPage />} />
+        <Route path="/staff-calendar" element={<StaffCalendarPage />} />
         <Route path="/instructors" element={<StaffPage />} />
         <Route path="/boats" element={<BoatsPage />} />
         <Route path="/courses" element={<CoursesPage />} />

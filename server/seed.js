@@ -51,6 +51,17 @@ const diveSites = [
   { name: 'The Pinnacle', location: 'Central Banks', max_depth: 30, difficulty: 'moderate' },
 ];
 
+const staff = [
+  { name: 'Captain Jack', email: 'jack@diveshop.com', phone: '+1234567890', role: 'instructor', certification: 'PADI Master Instructor', specialties: 'Technical Diving, Wreck Diving', certifications_valid_until: '2026-12-31', availability: 'available' },
+  { name: 'Maria Rodriguez', email: 'maria@diveshop.com', phone: '+1234567891', role: 'instructor', certification: 'PADI Instructor', specialties: 'Night Diving, Photography', certifications_valid_until: '2026-08-15', availability: 'available' },
+  { name: 'David Chen', email: 'david@diveshop.com', phone: '+1234567892', role: 'divemaster', certification: 'PADI Divemaster', specialties: 'Shark Diving, Drift Diving', certifications_valid_until: '2026-06-20', availability: 'available' },
+  { name: 'Sarah Wilson', email: 'sarah@diveshop.com', phone: '+1234567893', role: 'divemaster', certification: 'PADI Divemaster', specialties: 'Coral Reef, Marine Life', certifications_valid_until: '2026-09-10', availability: 'available' },
+  { name: 'Mike Johnson', email: 'mike@diveshop.com', phone: '+1234567894', role: 'divemaster', certification: 'PADI Divemaster', specialties: 'Deep Diving, Cave Diving', certifications_valid_until: '2026-11-05', availability: 'available' },
+  { name: 'Lisa Park', email: 'lisa@diveshop.com', phone: '+1234567895', role: 'boat_staff', certification: 'Boat Captain License', specialties: 'Navigation, Safety', certifications_valid_until: '2027-01-15', availability: 'available' },
+  { name: 'Tom Anderson', email: 'tom@diveshop.com', phone: '+1234567896', role: 'boat_staff', certification: 'First Aid Certified', specialties: 'Emergency Response, Equipment', certifications_valid_until: '2026-07-22', availability: 'available' },
+  { name: 'Rachel Green', email: 'rachel@diveshop.com', phone: '+1234567897', role: 'boat_staff', certification: 'Marine Radio Operator', specialties: 'Communication, Logistics', certifications_valid_until: '2026-10-30', availability: 'available' },
+];
+
 const equipment = [
   { name: 'Diving Mask', category: 'masks', sku: 'MASK-001', price: 45, rent_price_per_day: 5, quantity_in_stock: 25, quantity_available_for_rent: 25, reorder_level: 5 },
   { name: 'Snorkel', category: 'snorkels', sku: 'SNOR-001', price: 25, rent_price_per_day: 3, quantity_in_stock: 30, quantity_available_for_rent: 30, reorder_level: 5 },
@@ -148,6 +159,17 @@ db.serialize(() => {
       [uuidv4(), site.name, site.location, site.max_depth, site.difficulty],
       (err) => {
         if (!err) console.log(`Added dive site: ${site.name}`);
+      }
+    );
+  });
+
+  // Seed staff
+  staff.forEach((member) => {
+    db.run(
+      'INSERT OR IGNORE INTO staff (id, name, email, phone, role, certification, specialties, certifications_valid_until, availability) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [uuidv4(), member.name, member.email, member.phone || null, member.role, member.certification, member.specialties, member.certifications_valid_until, member.availability],
+      (err) => {
+        if (!err) console.log(`Added staff: ${member.name} (${member.role})`);
       }
     );
   });
