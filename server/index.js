@@ -3,8 +3,12 @@ import path from 'path';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
 import * as dbAdapter from './db-adapter.js';
+import Stripe from 'stripe';
 
 const app = express();
+
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_none');
 
 // Middleware
 app.use(cors({
@@ -1875,6 +1879,76 @@ app.get('/api/finance/export', (req, res) => {
       res.status(400).json({ error: 'Invalid format' });
     }
   });
+});
+
+// POST /api/stripe/payment-intent - create Stripe payment intent
+app.post('/api/stripe/payment-intent', async (req, res) => {
+  try {
+    const { amount, transaction_id, description } = req.body;
+    
+    if (!amount || !transaction_id) {
+      return res.status(400).json({ error: 'amount and transaction_id required' });
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(amount * 100), // Convert to cents
+      currency: 'usd',
+      metadata: {
+        transaction_id,
+      },
+      description: description || `Payment for transaction ${transaction_id}`,
+    });
+
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+    });
+  } catch (error) {
+    console.error('Stripe error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/stripe/confirm-payment - confirm payment success and create payment record
+app.post('/api/stripe/confirm-payment', async (req, res) => {
+  try {
+    const { paymentIntentId, transaction_id, amount } = req.body;
+    
+    if (!paymentIntentId || !transaction_id || !amount) {
+      return res.status(400).json({ error: 'paymentIntentId, transaction_id, and amount required' });
+    }
+
+    // Verify payment intent with Stripe
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    
+    if (paymentIntent.status !== 'succeeded') {
+      return res.status(400).json({ error: 'Payment not completed' });
+    }
+
+    // Create payment record in database
+    const db = dbAdapter.getDb();
+    const paymentId = uuidv4();
+    
+    db.run(
+      'INSERT INTO payments (id, transaction_id, amount, payment_method, reference_number, payment_status) VALUES (?, ?, ?, ?, ?, ?)',
+      [paymentId, transaction_id, amount, 'stripe', paymentIntentId, 'completed'],
+      (err) => {
+        if (err) {
+          db.close();
+          return res.status(500).json({ error: err.message });
+        }
+        
+        db.get('SELECT * FROM payments WHERE id = ?', [paymentId], (err, payment) => {
+          db.close();
+          if (err) return res.status(500).json({ error: err.message });
+          res.status(201).json(payment);
+        });
+      }
+    );
+  } catch (error) {
+    console.error('Stripe confirmation error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 const PORT = process.env.PORT || 3000;

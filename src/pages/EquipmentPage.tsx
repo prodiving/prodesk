@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { apiClient } from '@/integrations/api/client';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Plus, Save } from 'lucide-react';
+import { Trash2, Plus, Save, ShoppingCart } from 'lucide-react';
+import { StripeCheckoutModal } from '@/components/StripeCheckoutModal';
 
 export default function EquipmentPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -24,6 +25,11 @@ export default function EquipmentPage() {
     check_in: new Date().toISOString().slice(0, 10),
     check_out: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
   });
+  // Stripe checkout state
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [buyingItem, setBuyingItem] = useState<any>(null);
+  const [buyQuantity, setBuyQuantity] = useState(1);
+  const [buyTransaction, setBuyTransaction] = useState<any>(null);
 
   const load = async () => {
     setLoading(true);
@@ -194,6 +200,52 @@ export default function EquipmentPage() {
     }
   };
 
+  const handleBuy = async (item: any) => {
+    setBuyingItem(item);
+    setBuyQuantity(1);
+    // Create transaction record
+    try {
+      const transaction = await apiClient.transactions.create({
+        items: [
+          {
+            equipment_id: item.id,
+            quantity: 1,
+            unit_price: item.price || 0,
+            transaction_type: 'buy',
+            rental_days: 0,
+          },
+        ],
+        tax: 0,
+        discount: 0,
+        notes: `Direct purchase of ${item.name}`,
+      });
+      setBuyTransaction(transaction);
+      setCheckoutOpen(true);
+    } catch (err) {
+      console.error('Failed to create transaction', err);
+      toast({ title: 'Error', description: 'Failed to create transaction', variant: 'destructive' });
+    }
+  };
+
+  const handleBuySuccess = async (paymentIntentId: string) => {
+    if (!buyTransaction || !buyingItem) return;
+    try {
+      // Payment was already recorded by the confirm endpoint on backend
+      toast({ title: 'Success', description: `Purchased ${buyingItem.name}!` });
+      // Optional: decrement stock
+      const updatedItem = {
+        ...buyingItem,
+        quantity_in_stock: Math.max(0, (buyingItem.quantity_in_stock || 0) - buyQuantity),
+      };
+      await apiClient.equipment.update(buyingItem.id, updatedItem);
+      await load();
+      setBuyingItem(null);
+      setBuyTransaction(null);
+    } catch (err) {
+      console.error('Update failed', err);
+    }
+  };
+
   return (
     <div>
       <div className="page-header flex items-center justify-between mb-4">
@@ -251,6 +303,10 @@ export default function EquipmentPage() {
                     <div className="flex gap-2 justify-end">
                       <Button size="sm" onClick={() => handleSave(it.id)} disabled={savingId === it.id}>
                         {savingId === it.id ? 'Saving...' : 'Save'}
+                      </Button>
+                      <Button size="sm" onClick={() => handleBuy(it)} variant="default" className="gap-1">
+                        <ShoppingCart className="h-4 w-4" />
+                        Buy
                       </Button>
                       <Button size="sm" onClick={() => openRentalFor(it)}>
                         Rent
@@ -373,6 +429,17 @@ export default function EquipmentPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Stripe Checkout Modal */}
+      {buyingItem && buyTransaction && (
+        <StripeCheckoutModal
+          open={checkoutOpen}
+          onOpenChange={setCheckoutOpen}
+          amount={(buyingItem.price || 0) * buyQuantity}
+          description={`Buy ${buyQuantity} x ${buyingItem.name}`}
+          onSuccess={handleBuySuccess}
+        />
+      )}
     </div>
   );
 }
