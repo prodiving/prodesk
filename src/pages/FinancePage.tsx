@@ -443,10 +443,10 @@ export default function FinancePage() {
                       <td className="py-3 px-3 font-medium">{item.name}</td>
                       <td className="text-right py-3 px-3">{item.quantity}</td>
                       <td className="text-right py-3 px-3 font-semibold">
-                        ${item.revenue.toFixed(2)}
+                        ${Number(item.revenue || 0).toFixed(2)}
                       </td>
                       <td className="text-right py-3 px-3">
-                        {((item.revenue / summary.totalRevenue) * 100).toFixed(1)}%
+                        {Number(((Number(item.revenue || 0) / (Number(summary.totalRevenue || 1))) * 100)).toFixed(1)}%
                       </td>
                     </tr>
                   ))}
