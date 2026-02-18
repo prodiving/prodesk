@@ -539,19 +539,24 @@ app.get('/api/bookings', (req, res) => {
   db.all(`
     SELECT 
       b.id, b.diver_id, b.course_id, b.group_id, b.accommodation_id, b.check_in, b.check_out,
+      b.divemaster_id, b.boat_staff_id,
       b.size, b.weight, b.height, b.agent_id,
       b.total_amount, b.invoice_number, b.payment_status, b.notes, b.created_at,
       d.name as diver_name,
       c.name as course_name, c.price as course_price,
       g.name as group_name, g.days as group_days,
       a.name as accommodation_name, a.price_per_night, a.tier,
-      i.id as agent_id, i.name as agent_name
+      i.id as agent_id, i.name as agent_name,
+      s1.id as divemaster_id, s1.name as divemaster_name,
+      s2.id as boat_staff_id, s2.name as boat_staff_name
     FROM bookings b
     LEFT JOIN divers d ON b.diver_id = d.id
     LEFT JOIN courses c ON b.course_id = c.id
     LEFT JOIN groups g ON b.group_id = g.id
     LEFT JOIN accommodations a ON b.accommodation_id = a.id
     LEFT JOIN instructors i ON b.agent_id = i.id
+    LEFT JOIN staff s1 ON b.divemaster_id = s1.id
+    LEFT JOIN staff s2 ON b.boat_staff_id = s2.id
     ORDER BY b.created_at DESC
   `, (err, bookings) => {
     db.close();
@@ -579,6 +584,9 @@ app.get('/api/bookings', (req, res) => {
       weight: b.weight,
       height: b.height,
       agent: b.agent_id ? { id: b.agent_id, name: b.agent_name } : null
+      ,
+      divemaster: b.divemaster_id ? { id: b.divemaster_id, name: b.divemaster_name } : null,
+      boat_staff: b.boat_staff_id ? { id: b.boat_staff_id, name: b.boat_staff_name } : null
     }));
     res.json(result);
   });
@@ -609,7 +617,7 @@ app.get('/api/bookings/stats/last30days', (req, res) => {
 
 // POST /api/bookings - create a booking
 app.post('/api/bookings', (req, res) => {
-  const { diver_id, course_id, group_id, accommodation_id, check_in, check_out, size, weight, height, agent_id, total_amount, notes } = req.body;
+  const { diver_id, course_id, group_id, accommodation_id, check_in, check_out, size, weight, height, agent_id, total_amount, notes, divemaster_id, boat_staff_id } = req.body;
   const id = uuidv4();
   const invoiceNumber = `INV-${Date.now().toString(36).toUpperCase()}`;
 
@@ -1360,63 +1368,94 @@ app.delete('/api/equipment/:id', (req, res) => {
     }
 
     const merged = {
-      name: name !== undefined ? name : existing.name,
-      category: category !== undefined ? category : existing.category,
-      sku: sku !== undefined ? sku : existing.sku,
-      price: price !== undefined ? price : existing.price,
-      can_buy: can_buy !== undefined ? (can_buy ? 1 : 0) : existing.can_buy,
-      can_rent: can_rent !== undefined ? (can_rent ? 1 : 0) : existing.can_rent,
-      rent_price_per_day: rent_price_per_day !== undefined ? rent_price_per_day : existing.rent_price_per_day,
-      quantity_in_stock: quantity_in_stock !== undefined ? quantity_in_stock : existing.quantity_in_stock,
-      quantity_available_for_rent: quantity_available_for_rent !== undefined ? quantity_available_for_rent : existing.quantity_available_for_rent,
-      reorder_level: reorder_level !== undefined ? reorder_level : existing.reorder_level,
-      supplier: supplier !== undefined ? supplier : existing.supplier,
-      description: description !== undefined ? description : existing.description,
-      barcode: barcode !== undefined ? barcode : existing.barcode,
+    // Availability checks: prevent assigning staff already booked for overlapping dates
+    const checkOverlap = (staffField, staffId, cb) => {
+      if (!staffId || !check_in || !check_out) return cb(null, false);
+      db.get(
+        `SELECT COUNT(*) as cnt FROM bookings WHERE ${staffField} = ? AND NOT (check_out <= ? OR check_in >= ?)`,
+        [staffId, check_in, check_out],
+        (err, row) => {
+          if (err) return cb(err);
+          cb(null, row && row.cnt > 0);
+        }
+      );
     };
 
-    db.run(
-      'UPDATE equipment SET name = ?, category = ?, sku = ?, price = ?, can_buy = ?, can_rent = ?, rent_price_per_day = ?, quantity_in_stock = ?, quantity_available_for_rent = ?, reorder_level = ?, supplier = ?, description = ?, barcode = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [merged.name, merged.category, merged.sku || null, merged.price || 0, merged.can_buy, merged.can_rent, merged.rent_price_per_day || 0, merged.quantity_in_stock || 0, merged.quantity_available_for_rent || 0, merged.reorder_level || 5, merged.supplier || null, merged.description || null, merged.barcode || null, id],
-      (err2) => {
-        db.close();
-        if (err2) return res.status(500).json({ error: err2.message });
-        res.json({ ok: true });
-      }
-    );
-  });
-});
+    checkOverlap('divemaster_id', divemaster_id, (err, dmConflicts) => {
+      if (err) { db.close(); return res.status(500).json({ error: err.message }); }
+      if (dmConflicts) { db.close(); return res.status(409).json({ error: 'Selected divemaster is not available for the chosen dates' }); }
 
-// GET /api/transactions - list all transactions
-app.get('/api/transactions', (req, res) => {
-  const db = dbAdapter.getDb();
-  db.all(`
-    SELECT 
-      t.id, t.transaction_number, t.diver_id, t.booking_id, t.type, t.status,
-      t.subtotal, t.tax, t.discount, t.total, t.notes, t.created_at,
-      d.name as diver_name, d.email as diver_email,
-      b.invoice_number as booking_invoice
-    FROM transactions t
-    LEFT JOIN divers d ON t.diver_id = d.id
-    LEFT JOIN bookings b ON t.booking_id = b.id
-    ORDER BY t.created_at DESC
-  `, (err, transactions) => {
-    db.close();
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(transactions || []);
-  });
-});
+      checkOverlap('boat_staff_id', boat_staff_id, (err2, bsConflicts) => {
+        if (err2) { db.close(); return res.status(500).json({ error: err2.message }); }
+        if (bsConflicts) { db.close(); return res.status(409).json({ error: 'Selected boat staff is not available for the chosen dates' }); }
 
-// GET /api/transactions/:id - get transaction with items
-app.get('/api/transactions/:id', (req, res) => {
-  const { id } = req.params;
-  const db = dbAdapter.getDb();
-  db.get(`
-    SELECT 
-      t.id, t.transaction_number, t.diver_id, t.booking_id, t.type, t.status,
-      t.subtotal, t.tax, t.discount, t.total, t.notes, t.created_at,
-      d.name as diver_name, d.email as diver_email
-    FROM transactions t
+        // proceed to insert
+        db.run(
+          `INSERT INTO bookings (id, diver_id, course_id, group_id, accommodation_id, check_in, check_out, size, weight, height, agent_id, divemaster_id, boat_staff_id, total_amount, invoice_number, payment_status, notes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'unpaid', ?)`,
+          [id, diver_id, course_id || null, group_id || null, accommodation_id || null, check_in || null, check_out || null, size || null, weight || null, height || null, agent_id || null, divemaster_id || null, boat_staff_id || null, total_amount || 0, invoiceNumber, notes || null],
+          (err) => {
+            if (err) {
+              db.close();
+              return res.status(500).json({ error: err.message });
+            }
+
+            db.get(`
+              SELECT 
+                b.id, b.diver_id, b.course_id, b.group_id, b.accommodation_id, b.check_in, b.check_out, b.divemaster_id, b.boat_staff_id,
+                b.size, b.weight, b.height, b.agent_id,
+                b.total_amount, b.invoice_number, b.payment_status, b.notes, b.created_at,
+                d.name as diver_name,
+                c.name as course_name, c.price as course_price,
+                g.name as group_name, g.days as group_days,
+                a.name as accommodation_name, a.price_per_night, a.tier,
+                i.id as agent_id, i.name as agent_name,
+                s1.id as divemaster_id, s1.name as divemaster_name,
+                s2.id as boat_staff_id, s2.name as boat_staff_name
+              FROM bookings b
+              LEFT JOIN divers d ON b.diver_id = d.id
+              LEFT JOIN courses c ON b.course_id = c.id
+              LEFT JOIN groups g ON b.group_id = g.id
+              LEFT JOIN accommodations a ON b.accommodation_id = a.id
+              LEFT JOIN instructors i ON b.agent_id = i.id
+              LEFT JOIN staff s1 ON b.divemaster_id = s1.id
+              LEFT JOIN staff s2 ON b.boat_staff_id = s2.id
+              WHERE b.id = ?
+            `, [id], (err, booking) => {
+              db.close();
+              if (err) return res.status(500).json({ error: err.message });
+              res.json({
+                id: booking.id,
+                diver_id: booking.diver_id,
+                course_id: booking.course_id,
+                group_id: booking.group_id,
+                accommodation_id: booking.accommodation_id,
+                check_in: booking.check_in,
+                check_out: booking.check_out,
+                size: booking.size,
+                weight: booking.weight,
+                height: booking.height,
+                agent_id: booking.agent_id,
+                divemaster_id: booking.divemaster_id,
+                boat_staff_id: booking.boat_staff_id,
+                total_amount: booking.total_amount,
+                invoice_number: booking.invoice_number,
+                payment_status: booking.payment_status,
+                notes: booking.notes,
+                created_at: booking.created_at,
+                divers: { name: booking.diver_name },
+                courses: { name: booking.course_name, price: booking.course_price },
+                groups: { name: booking.group_name, days: booking.group_days },
+                accommodations: { name: booking.accommodation_name, price_per_night: booking.price_per_night, tier: booking.tier },
+                agent: booking.agent_id ? { id: booking.agent_id, name: booking.agent_name } : null,
+                divemaster: booking.divemaster_id ? { id: booking.divemaster_id, name: booking.divemaster_name } : null,
+                boat_staff: booking.boat_staff_id ? { id: booking.boat_staff_id, name: booking.boat_staff_name } : null
+              });
+            });
+          }
+        );
+      });
+    });
     LEFT JOIN divers d ON t.diver_id = d.id
     WHERE t.id = ?
   `, [id], (err, transaction) => {
