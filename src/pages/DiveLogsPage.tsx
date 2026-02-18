@@ -74,14 +74,14 @@ export default function DiveLogsPage() {
                   <Label>Diver</Label>
                   <Select value={form.diver_id} onValueChange={(v) => setForm({ ...form, diver_id: v })}>
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                    <SelectContent>{divers.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
+                    <SelectContent className="z-[100]">{divers.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="grid gap-2">
                   <Label>Dive Site</Label>
                   <Select value={form.site_id} onValueChange={(v) => setForm({ ...form, site_id: v })}>
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                    <SelectContent>{sites.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+                    <SelectContent className="z-[100]">{sites.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
               </div>
@@ -98,14 +98,14 @@ export default function DiveLogsPage() {
                   <Label>Boat</Label>
                   <Select value={form.boat_id} onValueChange={(v) => setForm({ ...form, boat_id: v })}>
                     <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
-                    <SelectContent>{boats.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
+                    <SelectContent className="z-[100]">{boats.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="grid gap-2">
                   <Label>Instructor</Label>
                   <Select value={form.instructor_id} onValueChange={(v) => setForm({ ...form, instructor_id: v })}>
                     <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
-                    <SelectContent>{instructors.map((i) => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}</SelectContent>
+                    <SelectContent className="z-[100]">{instructors.map((i) => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
               </div>
