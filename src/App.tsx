@@ -47,7 +47,8 @@ function ProtectedRoutes() {
   const { user, loading } = useAuth();
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading...</div>;
-  if (!user) return <Navigate to="/auth" replace />;
+  // Allow access even without user for now
+  // if (!user) return <Navigate to="/auth" replace />;
 
   return (
     <ErrorBoundary>
