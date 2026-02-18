@@ -11,7 +11,7 @@ export const apiClient = {
   async request(method: string, path: string, body: Record<string, unknown> | null = null) {
     const headers = {
       'Content-Type': 'application/json',
-      'x-user-id': userId,
+      // Removed x-user-id, server will use IP
     };
 
     const options: RequestInit = { method, headers };
