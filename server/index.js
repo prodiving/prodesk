@@ -97,7 +97,9 @@ async function seedDatabase() {
 
 // Simple auth middleware (for now, accepts any request with a user-id header)
 function authMiddleware(req, res, next) {
-  req.userId = req.headers['x-user-id'] || 'user-1';
+  // Use client IP as userId for IP-based "login"
+  const clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.connection.remoteAddress || req.socket.remoteAddress || 'unknown';
+  req.userId = clientIP.replace(/\./g, '-').replace(/:/g, '-'); // Normalize for use as ID
   next();
 }
 
