@@ -85,13 +85,17 @@ export async function initDb() {
         weight TEXT,
         height TEXT,
         agent_id TEXT,
+        divemaster_id TEXT,
+        boat_staff_id TEXT,
         total_amount DECIMAL(10,2) DEFAULT 0,
         invoice_number TEXT UNIQUE,
         payment_status TEXT DEFAULT 'unpaid',
         notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(diver_id) REFERENCES divers(id) ON DELETE CASCADE
+        FOREIGN KEY(diver_id) REFERENCES divers(id) ON DELETE CASCADE,
+        FOREIGN KEY(divemaster_id) REFERENCES staff(id) ON DELETE SET NULL,
+        FOREIGN KEY(boat_staff_id) REFERENCES staff(id) ON DELETE SET NULL
       )`,
 
       // Rental assignments table

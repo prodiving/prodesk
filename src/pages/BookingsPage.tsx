@@ -18,13 +18,14 @@ export default function BookingsPage() {
   const [courses, setCourses] = useState<any[]>([]);
   const [instructors, setInstructors] = useState<any[]>([]);
   const [accommodations, setAccommodations] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
   const [stats, setStats] = useState({ booking_count: 0, total_revenue: 0, total_amount: 0 });
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewingId, setViewingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ booking_type: "course", diver_id: "", group_id: "", course_id: "", accommodation_id: "", check_in: "", check_out: "", payment_status: "unpaid", notes: "", size: "", weight: "", height: "", agent_id: "" });
+  const [form, setForm] = useState({ booking_type: "course", diver_id: "", group_id: "", course_id: "", accommodation_id: "", check_in: "", check_out: "", payment_status: "unpaid", notes: "", size: "", weight: "", height: "", agent_id: "", divemaster_id: "", boat_staff_id: "" });
   const { toast } = useToast();
 
   const load = async () => {
@@ -39,6 +40,12 @@ export default function BookingsPage() {
         apiClient.bookings.getLast30Days(),
         apiClient.instructors.list(),
       ]);
+      
+      // Load staff for fun dive bookings
+      const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const staffRes = await fetch(`${BASE_URL}/api/staff`).catch(() => ({ ok: false }));
+      const staffData = staffRes.ok ? await staffRes.json() : [];
+      
       setBookings(b);
       setDivers(d);
       setGroups(g);
@@ -46,6 +53,7 @@ export default function BookingsPage() {
       setAccommodations(a);
       setStats(s);
       setInstructors(ins || []);
+      setStaff(staffData || []);
     } catch (err) {
       console.error('Failed to load bookings', err);
       toast({ title: "Error", description: String(err), variant: "destructive" });
@@ -87,10 +95,12 @@ export default function BookingsPage() {
         weight: booking.weight || "",
         height: booking.height || "",
         agent_id: booking.agent?.id || "",
+        divemaster_id: booking.divemaster_id || "",
+        boat_staff_id: booking.boat_staff_id || "",
       });
     } else {
       setEditingId(null);
-      setForm({ booking_type: "course", diver_id: "", group_id: "", course_id: "", accommodation_id: "", check_in: "", check_out: "", payment_status: "unpaid", notes: "", size: "", weight: "", height: "", agent_id: "" });
+      setForm({ booking_type: "course", diver_id: "", group_id: "", course_id: "", accommodation_id: "", check_in: "", check_out: "", payment_status: "unpaid", notes: "", size: "", weight: "", height: "", agent_id: "", divemaster_id: "", boat_staff_id: "" });
     }
     setOpen(true);
   };
@@ -137,6 +147,8 @@ export default function BookingsPage() {
         weight: form.weight || null,
         height: form.height || null,
         agent_id: form.agent_id || null,
+        divemaster_id: form.booking_type === "fun_dive" ? (form.divemaster_id || null) : null,
+        boat_staff_id: form.booking_type === "fun_dive" ? (form.boat_staff_id || null) : null,
       };
 
       console.log('Payload to send:', payload);
@@ -153,7 +165,7 @@ export default function BookingsPage() {
       console.log('Save successful, reloading...');
       setOpen(false);
       setEditingId(null);
-      setForm({ booking_type: "course", diver_id: "", group_id: "", course_id: "", accommodation_id: "", check_in: "", check_out: "", payment_status: "unpaid", notes: "", size: "", weight: "", height: "", agent_id: "" });
+      setForm({ booking_type: "course", diver_id: "", group_id: "", course_id: "", accommodation_id: "", check_in: "", check_out: "", payment_status: "unpaid", notes: "", size: "", weight: "", height: "", agent_id: "", divemaster_id: "", boat_staff_id: "" });
       load();
     } catch (err) {
       console.error('Save error:', err);
@@ -325,6 +337,38 @@ export default function BookingsPage() {
                   <Select value={form.group_id} onValueChange={(v) => setForm({ ...form, group_id: v })}>
                     <SelectTrigger><SelectValue placeholder="Select group (optional)" /></SelectTrigger>
                     <SelectContent className="z-50">{groups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name} ({g.days} days)</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Divemaster Selection - Only show for fun dive bookings */}
+              {form.booking_type === "fun_dive" && (
+                <div>
+                  <Label>Divemaster</Label>
+                  <Select value={form.divemaster_id} onValueChange={(v) => setForm({ ...form, divemaster_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select divemaster (optional)" /></SelectTrigger>
+                    <SelectContent className="z-50">
+                      <SelectItem value="">None</SelectItem>
+                      {staff.filter(s => s.role === 'divemaster').map((dm) => (
+                        <SelectItem key={dm.id} value={dm.id}>{dm.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Boat Staff Selection - Only show for fun dive bookings */}
+              {form.booking_type === "fun_dive" && (
+                <div>
+                  <Label>Boat Staff</Label>
+                  <Select value={form.boat_staff_id} onValueChange={(v) => setForm({ ...form, boat_staff_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select boat staff (optional)" /></SelectTrigger>
+                    <SelectContent className="z-50">
+                      <SelectItem value="">None</SelectItem>
+                      {staff.filter(s => s.role === 'boat_staff').map((bs) => (
+                        <SelectItem key={bs.id} value={bs.id}>{bs.name}</SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                 </div>
               )}

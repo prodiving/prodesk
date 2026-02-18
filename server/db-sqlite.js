@@ -147,6 +147,8 @@ export function initDb() {
           weight TEXT,
           height TEXT,
           agent_id TEXT,
+          divemaster_id TEXT,
+          boat_staff_id TEXT,
           total_amount REAL DEFAULT 0,
           invoice_number TEXT UNIQUE,
           payment_status TEXT DEFAULT 'unpaid',
@@ -156,7 +158,9 @@ export function initDb() {
           FOREIGN KEY(diver_id) REFERENCES divers(id) ON DELETE CASCADE,
           FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE SET NULL,
           FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE SET NULL,
-          FOREIGN KEY(accommodation_id) REFERENCES accommodations(id) ON DELETE SET NULL
+          FOREIGN KEY(accommodation_id) REFERENCES accommodations(id) ON DELETE SET NULL,
+          FOREIGN KEY(divemaster_id) REFERENCES staff(id) ON DELETE SET NULL,
+          FOREIGN KEY(boat_staff_id) REFERENCES staff(id) ON DELETE SET NULL
         )
       `);
 
