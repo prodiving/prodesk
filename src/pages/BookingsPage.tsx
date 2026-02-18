@@ -462,7 +462,7 @@ export default function BookingsPage() {
                     </div>
                     <div className="col-span-2">
                       <p className="text-sm text-muted-foreground">Total Amount</p>
-                      <p className="text-xl font-bold">${b.total_amount.toFixed(2)}</p>
+                      <p className="text-xl font-bold">${Number(b.total_amount || 0).toFixed(2)}</p>
                     </div>
                     <div className="col-span-2">
                       <p className="text-sm text-muted-foreground">Payment Status</p>
@@ -496,7 +496,7 @@ export default function BookingsPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Revenue (Paid)</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">${stats.total_revenue.toFixed(2)}</div>
+            <div className="text-3xl font-bold">${Number(stats.total_revenue || 0).toFixed(2)}</div>
           </CardContent>
         </Card>
         <Card>
@@ -504,7 +504,7 @@ export default function BookingsPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Amount</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">${stats.total_amount.toFixed(2)}</div>
+            <div className="text-3xl font-bold">${Number(stats.total_amount || 0).toFixed(2)}</div>
           </CardContent>
         </Card>
       </div>

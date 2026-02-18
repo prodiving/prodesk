@@ -233,7 +233,7 @@ export default function POSPage() {
 
         toast({
           title: "Success",
-          description: `Transaction ${transaction.transaction_number} completed. Total: $${cartTotal.total.toFixed(2)}`,
+          description: `Transaction ${transaction.transaction_number} completed. Total: $${Number(cartTotal.total || 0).toFixed(2)}`,
         });
 
         // Reset cart
@@ -306,7 +306,7 @@ export default function POSPage() {
                         <div key={`${item.equipment.id}-${item.transactionType}`} className="flex items-center justify-between p-3 bg-muted/50 rounded">
                           <div className="flex-1">
                             <p className="font-medium">{item.equipment.name}</p>
-                            <p className="text-sm text-muted-foreground">${item.unitPrice.toFixed(2)} {item.transactionType === "rent" ? "per day" : "each"}</p>
+                            <p className="text-sm text-muted-foreground">${Number(item.unitPrice || 0).toFixed(2)} {item.transactionType === "rent" ? "per day" : "each"}</p>
                             {item.transactionType === "rent" && (
                               <div className="mt-2 flex items-center gap-2">
                                 <Label className="text-xs">Days:</Label>
@@ -330,8 +330,8 @@ export default function POSPage() {
                             />
                             <span className="w-24 text-right font-medium">
                               {item.transactionType === "rent" 
-                                ? `$${(item.quantity * item.unitPrice * item.rentalDays).toFixed(2)}`
-                                : `$${(item.quantity * item.unitPrice).toFixed(2)}`
+                                ? `$${Number(item.quantity * (item.unitPrice || 0) * item.rentalDays).toFixed(2)}`
+                                : `$${Number(item.quantity * (item.unitPrice || 0)).toFixed(2)}`
                               }
                             </span>
                             <Button
@@ -378,7 +378,7 @@ export default function POSPage() {
                       <div className="grid grid-cols-3 gap-3">
                         <div>
                           <Label>Subtotal</Label>
-                          <p className="text-lg font-mono font-bold">${cartTotal.subtotal.toFixed(2)}</p>
+                          <p className="text-lg font-mono font-bold">${Number(cartTotal.subtotal || 0).toFixed(2)}</p>
                         </div>
                         <div>
                           <Label>Tax</Label>
@@ -422,7 +422,7 @@ export default function POSPage() {
                       </div>
                       <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded flex items-center justify-between">
                         <span className="font-semibold">Total:</span>
-                        <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">${cartTotal.total.toFixed(2)}</span>
+                        <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">${Number(cartTotal.total || 0).toFixed(2)}</span>
                       </div>
                       <div className="flex gap-2 justify-end pt-4">
                         <Button variant="outline" onClick={() => setCartOpen(false)}>Cancel</Button>
@@ -578,7 +578,7 @@ export default function POSPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Today's Sales</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">${(posSummary.today.total_sales || 0).toFixed(2)}</div>
+              <div className="text-3xl font-bold">${Number(posSummary.today.total_sales || 0).toFixed(2)}</div>
               <p className="text-xs text-muted-foreground mt-1">{posSummary.today.transaction_count} transactions</p>
             </CardContent>
           </Card>
@@ -587,7 +587,7 @@ export default function POSPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Amount Received</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">${(posSummary.today.total_paid || 0).toFixed(2)}</div>
+              <div className="text-3xl font-bold">${Number(posSummary.today.total_paid || 0).toFixed(2)}</div>
               <p className="text-xs text-muted-foreground mt-1">{posSummary.today.payment_count} payments</p>
             </CardContent>
           </Card>
@@ -650,7 +650,7 @@ export default function POSPage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-2xl font-bold">
-                        ${mode === "buy" ? item.price.toFixed(2) : item.rent_price_per_day.toFixed(2)}
+                        ${mode === "buy" ? Number(item.price || 0).toFixed(2) : Number(item.rent_price_per_day || 0).toFixed(2)}
                         {mode === "rent" && <span className="text-xs font-normal text-muted-foreground">/day</span>}
                       </span>
                       <Badge variant={mode === "buy" 
@@ -705,7 +705,7 @@ export default function POSPage() {
                   {txn.diver_name && <p className="text-sm font-medium">{txn.diver_name}</p>}
                   <p className="text-xs text-muted-foreground mt-1">{new Date(txn.created_at).toLocaleString()}</p>
                   <div className="flex items-center justify-between mt-2 pt-2 border-t">
-                    <span className="font-mono text-lg font-bold">${txn.total.toFixed(2)}</span>
+                    <span className="font-mono text-lg font-bold">${Number(txn.total || 0).toFixed(2)}</span>
                     <Badge variant="outline">{txn.status}</Badge>
                   </div>
                 </div>

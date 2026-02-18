@@ -341,14 +341,14 @@ export default function EquipmentMaintenancePage(props: { initialDiverId?: strin
                         </div>
                         
                         <div className="flex items-center justify-between">
-                          <span className="text-lg font-bold">${it.price?.toFixed(2) || '0.00'}</span>
+                          <span className="text-lg font-bold">${Number(it.price || 0).toFixed(2)}</span>
                           <Badge variant={getStatus(it) === 'Available' ? 'secondary' : 'destructive'}>
                             {getStatus(it)}
                           </Badge>
                         </div>
 
                         <div className="flex items-center justify-between text-sm">
-                          <span>Rent: ${it.rent_price_per_day?.toFixed(2) || '0.00'}/day</span>
+                          <span>Rent: ${Number(it.rent_price_per_day || 0).toFixed(2)}/day</span>
                           <Badge variant={maintenance.color} className="flex items-center gap-1">
                             <MaintenanceIcon className="w-3 h-3" />
                             {maintenance.status}

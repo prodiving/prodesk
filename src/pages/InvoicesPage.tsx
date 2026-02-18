@@ -378,7 +378,7 @@ export default function InvoicesPage() {
                         {invoice.reference || '-'}
                       </td>
                       <td className="px-6 py-3 text-sm font-semibold">
-                        {invoice.amount.toFixed(2)} USD
+                        {Number(invoice.amount || 0).toFixed(2)} USD
                       </td>
                       <td className="px-6 py-3 text-sm">
                         <Badge className={getStatusColor(invoice.status)}>
@@ -386,7 +386,7 @@ export default function InvoicesPage() {
                         </Badge>
                       </td>
                       <td className="px-6 py-3 text-sm font-semibold">
-                        {invoice.balance.toFixed(2)} USD
+                        {Number(invoice.balance || 0).toFixed(2)} USD
                       </td>
                     </tr>
                   ))

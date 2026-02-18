@@ -292,7 +292,7 @@ export default function FinancePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">${summary.totalRevenue.toFixed(2)}</div>
+            <div className="text-3xl font-bold">${Number(summary.totalRevenue || 0).toFixed(2)}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {summary.totalTransactions} transactions
             </p>
@@ -308,7 +308,7 @@ export default function FinancePage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              ${summary.averageTransactionValue.toFixed(2)}
+              ${Number(summary.averageTransactionValue || 0).toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Per sale</p>
           </CardContent>
@@ -322,7 +322,7 @@ export default function FinancePage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-600">
-              ${summary.totalTax.toFixed(2)}
+              ${Number(summary.totalTax || 0).toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">GST/VAT</p>
           </CardContent>
@@ -336,7 +336,7 @@ export default function FinancePage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-blue-600">
-              ${summary.equipmentInventoryValue.toFixed(2)}
+              ${Number(summary.equipmentInventoryValue || 0).toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Current value</p>
           </CardContent>
@@ -371,9 +371,9 @@ export default function FinancePage() {
                       <p className="text-sm text-gray-500">{day.count} transactions</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-lg">${day.amount.toFixed(2)}</p>
+                      <p className="font-bold text-lg">${Number(day.amount || 0).toFixed(2)}</p>
                       <p className="text-sm text-gray-500">
-                        Avg: ${(day.amount / day.count).toFixed(2)}
+                        Avg: ${Number((Number(day.amount || 0) / (day.count || 1))).toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -393,7 +393,7 @@ export default function FinancePage() {
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 5)
                 .map(([method, amount]) => {
-                  const percentage = ((amount / summary.totalRevenue) * 100).toFixed(1);
+                  const percentage = Number(((Number(amount || 0) / (Number(summary.totalRevenue || 1))) * 100)).toFixed(1);
                   return (
                     <div key={method} className="space-y-1">
                       <div className="flex justify-between text-sm">
