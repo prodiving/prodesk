@@ -66,6 +66,8 @@ export async function initDb() {
         supplier TEXT,
         description TEXT,
         barcode TEXT,
+        status TEXT DEFAULT 'available',
+        maintenance_notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
@@ -252,6 +254,44 @@ export async function initDb() {
         products TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
+
+      // Maintenance records table
+      `CREATE TABLE IF NOT EXISTS maintenance_records (
+        id TEXT PRIMARY KEY,
+        equipment_id TEXT NOT NULL,
+        reported_by TEXT,
+        assigned_to TEXT,
+        issue_description TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        priority TEXT DEFAULT 'medium',
+        started_at TIMESTAMP,
+        completed_at TIMESTAMP,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(equipment_id) REFERENCES equipment(id) ON DELETE CASCADE,
+        FOREIGN KEY(reported_by) REFERENCES divers(id) ON DELETE SET NULL,
+        FOREIGN KEY(assigned_to) REFERENCES divers(id) ON DELETE SET NULL
+      )`,
+
+      // Problem reports table
+      `CREATE TABLE IF NOT EXISTS problem_reports (
+        id TEXT PRIMARY KEY,
+        equipment_id TEXT NOT NULL,
+        reported_by TEXT NOT NULL,
+        assigned_to TEXT,
+        problem_description TEXT NOT NULL,
+        severity TEXT DEFAULT 'medium',
+        status TEXT DEFAULT 'open',
+        resolution_notes TEXT,
+        reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        resolved_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(equipment_id) REFERENCES equipment(id) ON DELETE CASCADE,
+        FOREIGN KEY(reported_by) REFERENCES divers(id) ON DELETE SET NULL,
+        FOREIGN KEY(assigned_to) REFERENCES divers(id) ON DELETE SET NULL
       )`
     ];
 

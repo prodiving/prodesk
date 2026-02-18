@@ -225,6 +225,8 @@ export function initDb() {
           supplier TEXT,
           description TEXT,
           barcode TEXT UNIQUE,
+          status TEXT DEFAULT 'available',
+          maintenance_notes TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
@@ -354,6 +356,48 @@ export function initDb() {
           FOREIGN KEY(trip_id) REFERENCES trips(id) ON DELETE CASCADE,
           FOREIGN KEY(diver_id) REFERENCES divers(id) ON DELETE CASCADE,
           UNIQUE(trip_id, diver_id)
+        )
+      `);
+
+      // Maintenance records table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS maintenance_records (
+          id TEXT PRIMARY KEY,
+          equipment_id TEXT NOT NULL,
+          reported_by TEXT,
+          assigned_to TEXT,
+          issue_description TEXT NOT NULL,
+          status TEXT DEFAULT 'pending',
+          priority TEXT DEFAULT 'medium',
+          started_at DATETIME,
+          completed_at DATETIME,
+          notes TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY(equipment_id) REFERENCES equipment(id) ON DELETE CASCADE,
+          FOREIGN KEY(reported_by) REFERENCES divers(id) ON DELETE SET NULL,
+          FOREIGN KEY(assigned_to) REFERENCES divers(id) ON DELETE SET NULL
+        )
+      `);
+
+      // Problem reports table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS problem_reports (
+          id TEXT PRIMARY KEY,
+          equipment_id TEXT NOT NULL,
+          reported_by TEXT NOT NULL,
+          assigned_to TEXT,
+          problem_description TEXT NOT NULL,
+          severity TEXT DEFAULT 'medium',
+          status TEXT DEFAULT 'open',
+          resolution_notes TEXT,
+          reported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          resolved_at DATETIME,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY(equipment_id) REFERENCES equipment(id) ON DELETE CASCADE,
+          FOREIGN KEY(reported_by) REFERENCES divers(id) ON DELETE SET NULL,
+          FOREIGN KEY(assigned_to) REFERENCES divers(id) ON DELETE SET NULL
         )
       `, (err) => {
         if (err) {

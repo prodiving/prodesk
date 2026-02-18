@@ -7,8 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { apiClient } from '@/integrations/api/client';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Plus, Save, ShoppingCart } from 'lucide-react';
+import { Trash2, Plus, Save, ShoppingCart, Wrench, AlertTriangle } from 'lucide-react';
 import { StripeCheckoutModal } from '@/components/StripeCheckoutModal';
+import { MaintenanceModal } from '@/components/MaintenanceModal';
+import { ProblemReportModal } from '@/components/ProblemReportModal';
 
 export default function EquipmentPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -30,6 +32,10 @@ export default function EquipmentPage() {
   const [buyingItem, setBuyingItem] = useState<any>(null);
   const [buyQuantity, setBuyQuantity] = useState(1);
   const [buyTransaction, setBuyTransaction] = useState<any>(null);
+  // Maintenance and problem reporting state
+  const [maintenanceOpen, setMaintenanceOpen] = useState(false);
+  const [problemReportOpen, setProblemReportOpen] = useState(false);
+  const [selectedItemForModal, setSelectedItemForModal] = useState<any>(null);
 
   const load = async () => {
     setLoading(true);
@@ -246,6 +252,28 @@ export default function EquipmentPage() {
     }
   };
 
+  const openMaintenance = (item: any) => {
+    setSelectedItemForModal(item);
+    setMaintenanceOpen(true);
+  };
+
+  const openProblemReport = (item: any) => {
+    setSelectedItemForModal(item);
+    setProblemReportOpen(true);
+  };
+
+  const getStatusBadge = (item: any) => {
+    const status = item.status || 'available';
+    const statusConfig: Record<string, { variant: any; label: string }> = {
+      available: { variant: 'secondary', label: 'Available' },
+      maintenance: { variant: 'warning', label: 'In Maintenance' },
+      reserved: { variant: 'outline', label: 'Reserved' },
+      unavailable: { variant: 'destructive', label: 'Unavailable' },
+    };
+    const config = statusConfig[status] || statusConfig.available;
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
   return (
     <div>
       <div className="page-header flex items-center justify-between mb-4">
@@ -299,17 +327,26 @@ export default function EquipmentPage() {
                       {(edits[it.id]?.quantity_available_for_rent ?? it.quantity_available_for_rent ?? 0) > 0 ? 'Available' : 'Rented out'}
                     </Badge>
                   </td>
+                  <td>{getStatusBadge(it)}</td>
                   <td>
-                    <div className="flex gap-2 justify-end">
-                      <Button size="sm" onClick={() => handleSave(it.id)} disabled={savingId === it.id}>
+                    <div className="flex gap-1 justify-end flex-wrap">
+                      <Button size="sm" onClick={() => handleSave(it.id)} disabled={savingId === it.id} className="text-xs">
                         {savingId === it.id ? 'Saving...' : 'Save'}
                       </Button>
-                      <Button size="sm" onClick={() => handleBuy(it)} variant="default" className="gap-1">
-                        <ShoppingCart className="h-4 w-4" />
+                      <Button size="sm" onClick={() => handleBuy(it)} variant="default" className="gap-1 text-xs">
+                        <ShoppingCart className="h-3 w-3" />
                         Buy
                       </Button>
-                      <Button size="sm" onClick={() => openRentalFor(it)}>
+                      <Button size="sm" onClick={() => openRentalFor(it)} className="text-xs">
                         Rent
+                      </Button>
+                      <Button size="sm" onClick={() => openMaintenance(it)} variant="outline" className="gap-1 text-xs">
+                        <Wrench className="h-3 w-3" />
+                        Maint.
+                      </Button>
+                      <Button size="sm" onClick={() => openProblemReport(it)} variant="outline" className="gap-1 text-xs">
+                        <AlertTriangle className="h-3 w-3" />
+                        Report
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => handleDelete(it.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </div>
@@ -438,6 +475,28 @@ export default function EquipmentPage() {
           amount={(buyingItem.price || 0) * buyQuantity}
           description={`Buy ${buyQuantity} x ${buyingItem.name}`}
           onSuccess={handleBuySuccess}
+        />
+      )}
+
+      {/* Maintenance Modal */}
+      {selectedItemForModal && (
+        <MaintenanceModal
+          open={maintenanceOpen}
+          onOpenChange={setMaintenanceOpen}
+          equipment={selectedItemForModal}
+          divers={divers}
+          onSuccess={load}
+        />
+      )}
+
+      {/* Problem Report Modal */}
+      {selectedItemForModal && (
+        <ProblemReportModal
+          open={problemReportOpen}
+          onOpenChange={setProblemReportOpen}
+          equipment={selectedItemForModal}
+          divers={divers}
+          onSuccess={load}
         />
       )}
     </div>

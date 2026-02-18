@@ -1951,6 +1951,182 @@ app.post('/api/stripe/confirm-payment', async (req, res) => {
   }
 });
 
+// ===== MAINTENANCE RECORDS ENDPOINTS =====
+
+// GET /api/maintenance-records - list all maintenance records
+app.get('/api/maintenance-records', (req, res) => {
+  const db = dbAdapter.getDb();
+  db.all(`
+    SELECT 
+      m.*, 
+      e.name as equipment_name,
+      d1.name as reported_by_name,
+      d2.name as assigned_to_name
+    FROM maintenance_records m
+    LEFT JOIN equipment e ON m.equipment_id = e.id
+    LEFT JOIN divers d1 ON m.reported_by = d1.id
+    LEFT JOIN divers d2 ON m.assigned_to = d2.id
+    ORDER BY m.created_at DESC
+  `, (err, records) => {
+    db.close();
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(records || []);
+  });
+});
+
+// POST /api/maintenance-records - create maintenance record
+app.post('/api/maintenance-records', (req, res) => {
+  const { equipment_id, reported_by, assigned_to, issue_description, priority, notes } = req.body;
+  if (!equipment_id || !issue_description) {
+    return res.status(400).json({ error: 'equipment_id and issue_description required' });
+  }
+
+  const db = dbAdapter.getDb();
+  const id = uuidv4();
+  db.run(
+    'INSERT INTO maintenance_records (id, equipment_id, reported_by, assigned_to, issue_description, priority, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [id, equipment_id, reported_by || null, assigned_to || null, issue_description, priority || 'medium', notes || null],
+    (err) => {
+      if (err) {
+        db.close();
+        return res.status(500).json({ error: err.message });
+      }
+      db.get('SELECT * FROM maintenance_records WHERE id = ?', [id], (err, record) => {
+        db.close();
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(201).json(record);
+      });
+    }
+  );
+});
+
+// PUT /api/maintenance-records/:id - update maintenance record
+app.put('/api/maintenance-records/:id', (req, res) => {
+  const { status, assigned_to, notes, started_at, completed_at } = req.body;
+  const db = dbAdapter.getDb();
+  
+  const updates = [];
+  const values = [];
+  
+  if (status !== undefined) { updates.push('status = ?'); values.push(status); }
+  if (assigned_to !== undefined) { updates.push('assigned_to = ?'); values.push(assigned_to); }
+  if (notes !== undefined) { updates.push('notes = ?'); values.push(notes); }
+  if (started_at !== undefined) { updates.push('started_at = ?'); values.push(started_at); }
+  if (completed_at !== undefined) { updates.push('completed_at = ?'); values.push(completed_at); }
+  
+  if (updates.length === 0) {
+    db.close();
+    return res.status(400).json({ error: 'No fields to update' });
+  }
+  
+  updates.push('updated_at = CURRENT_TIMESTAMP');
+  values.push(req.params.id);
+  
+  db.run(
+    `UPDATE maintenance_records SET ${updates.join(', ')} WHERE id = ?`,
+    values,
+    (err) => {
+      if (err) {
+        db.close();
+        return res.status(500).json({ error: err.message });
+      }
+      db.get('SELECT * FROM maintenance_records WHERE id = ?', [req.params.id], (err, record) => {
+        db.close();
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(record);
+      });
+    }
+  );
+});
+
+// ===== PROBLEM REPORTS ENDPOINTS =====
+
+// GET /api/problem-reports - list all problem reports
+app.get('/api/problem-reports', (req, res) => {
+  const db = dbAdapter.getDb();
+  db.all(`
+    SELECT 
+      p.*,
+      e.name as equipment_name,
+      d1.name as reported_by_name,
+      d2.name as assigned_to_name
+    FROM problem_reports p
+    LEFT JOIN equipment e ON p.equipment_id = e.id
+    LEFT JOIN divers d1 ON p.reported_by = d1.id
+    LEFT JOIN divers d2 ON p.assigned_to = d2.id
+    WHERE p.status = 'open'
+    ORDER BY p.reported_at DESC
+  `, (err, reports) => {
+    db.close();
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(reports || []);
+  });
+});
+
+// POST /api/problem-reports - create problem report
+app.post('/api/problem-reports', (req, res) => {
+  const { equipment_id, reported_by, problem_description, severity } = req.body;
+  if (!equipment_id || !reported_by || !problem_description) {
+    return res.status(400).json({ error: 'equipment_id, reported_by, and problem_description required' });
+  }
+
+  const db = dbAdapter.getDb();
+  const id = uuidv4();
+  db.run(
+    'INSERT INTO problem_reports (id, equipment_id, reported_by, problem_description, severity) VALUES (?, ?, ?, ?, ?)',
+    [id, equipment_id, reported_by, problem_description, severity || 'medium'],
+    (err) => {
+      if (err) {
+        db.close();
+        return res.status(500).json({ error: err.message });
+      }
+      db.get('SELECT * FROM problem_reports WHERE id = ?', [id], (err, report) => {
+        db.close();
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(201).json(report);
+      });
+    }
+  );
+});
+
+// PUT /api/problem-reports/:id - update problem report (assign, resolve)
+app.put('/api/problem-reports/:id', (req, res) => {
+  const { status, assigned_to, resolution_notes, resolved_at } = req.body;
+  const db = dbAdapter.getDb();
+  
+  const updates = [];
+  const values = [];
+  
+  if (status !== undefined) { updates.push('status = ?'); values.push(status); }
+  if (assigned_to !== undefined) { updates.push('assigned_to = ?'); values.push(assigned_to); }
+  if (resolution_notes !== undefined) { updates.push('resolution_notes = ?'); values.push(resolution_notes); }
+  if (resolved_at !== undefined) { updates.push('resolved_at = ?'); values.push(resolved_at); }
+  
+  if (updates.length === 0) {
+    db.close();
+    return res.status(400).json({ error: 'No fields to update' });
+  }
+  
+  updates.push('updated_at = CURRENT_TIMESTAMP');
+  values.push(req.params.id);
+  
+  db.run(
+    `UPDATE problem_reports SET ${updates.join(', ')} WHERE id = ?`,
+    values,
+    (err) => {
+      if (err) {
+        db.close();
+        return res.status(500).json({ error: err.message });
+      }
+      db.get('SELECT * FROM problem_reports WHERE id = ?', [req.params.id], (err, report) => {
+        db.close();
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(report);
+      });
+    }
+  );
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
