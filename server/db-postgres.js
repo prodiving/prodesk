@@ -1,4 +1,5 @@
 import pkg from 'pg';
+import { v4 as uuidv4 } from 'uuid';
 const { Client, Pool } = pkg;
 
 let pool = null;
