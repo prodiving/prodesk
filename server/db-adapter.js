@@ -37,6 +37,48 @@ export function getDb() {
   if (dbModule.getDb) {
     return dbModule.getDb();
   }
+
+  // If the module exposes async Postgres helpers, provide a SQLite-compatible
+  // wrapper so existing code that calls `db.all/get/run` continues to work.
+  if (dbModule.queryDb || dbModule.getDbRow || dbModule.runDb) {
+    return {
+      all(sql, paramsOrCb, cbIfAny) {
+        let params = [];
+        let cb = cbIfAny;
+        if (typeof paramsOrCb === 'function') {
+          cb = paramsOrCb;
+        } else if (Array.isArray(paramsOrCb)) {
+          params = paramsOrCb;
+        }
+        dbModule.queryDb(sql, params).then(rows => cb && cb(null, rows)).catch(err => cb && cb(err));
+      },
+      get(sql, paramsOrCb, cbIfAny) {
+        let params = [];
+        let cb = cbIfAny;
+        if (typeof paramsOrCb === 'function') {
+          cb = paramsOrCb;
+        } else if (Array.isArray(paramsOrCb)) {
+          params = paramsOrCb;
+        }
+        dbModule.getDbRow(sql, params).then(row => cb && cb(null, row)).catch(err => cb && cb(err));
+      },
+      run(sql, paramsOrCb, cbIfAny) {
+        let params = [];
+        let cb = cbIfAny;
+        if (typeof paramsOrCb === 'function') {
+          cb = paramsOrCb;
+        } else if (Array.isArray(paramsOrCb)) {
+          params = paramsOrCb;
+        }
+        dbModule.runDb(sql, params).then(() => cb && cb(null)).catch(err => cb && cb(err));
+      },
+      close() {
+        // no-op for pooled Postgres connections; close handled separately
+        return;
+      }
+    };
+  }
+
   throw new Error('getDb not available in current database module');
 }
 
