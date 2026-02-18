@@ -127,6 +127,26 @@ if (!SUPABASE_URL) {
           return {};
         }
       })();
+    },
+    signInWithPassword({ email, password }: { email: string; password: string }) {
+      return (async () => {
+        try {
+          const real = await ensureLoaded();
+          return real.auth.signInWithPassword({ email, password });
+        } catch (e) {
+          return { error: { message: 'Supabase not configured' } };
+        }
+      })();
+    },
+    signUp({ email, password, options }: { email: string; password: string; options?: any }) {
+      return (async () => {
+        try {
+          const real = await ensureLoaded();
+          return real.auth.signUp({ email, password, options });
+        } catch (e) {
+          return { error: { message: 'Supabase not configured' } };
+        }
+      })();
     }
   };
 
