@@ -39,8 +39,10 @@ async function run() {
 
     for (const s of staff) {
       const id = uuidv4();
+      // Use generic ON CONFLICT DO NOTHING so we don't require a unique
+      // constraint on `staff.email` in existing databases.
       await client.query(
-        `INSERT INTO staff (id, name, email, role) VALUES ($1, $2, $3, $4) ON CONFLICT (email) DO NOTHING`,
+        `INSERT INTO staff (id, name, email, role) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
         [id, s.name, s.email, s.role]
       );
     }
@@ -55,7 +57,7 @@ async function run() {
     for (const b of boats) {
       const id = uuidv4();
       await client.query(
-        `INSERT INTO boats (id, name, capacity) VALUES ($1, $2, $3) ON CONFLICT (name) DO NOTHING`,
+        `INSERT INTO boats (id, name, capacity) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
         [id, b.name, b.capacity]
       );
     }
@@ -70,7 +72,7 @@ async function run() {
     for (const e of equipment) {
       const id = uuidv4();
       await client.query(
-        `INSERT INTO equipment (id, name, category, quantity_in_stock, quantity_available_for_rent, can_rent, rent_price_per_day) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (name) DO NOTHING`,
+        `INSERT INTO equipment (id, name, category, quantity_in_stock, quantity_available_for_rent, can_rent, rent_price_per_day) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING`,
         [id, e.name, e.category, e.quantity_in_stock, e.quantity_available_for_rent, 1, e.rent_price_per_day]
       );
     }

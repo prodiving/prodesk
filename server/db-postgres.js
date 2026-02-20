@@ -77,20 +77,7 @@ export async function initDb() {
       // in PostgreSQL, we'll create `bookings` after `staff` below. For now
       // leave a placeholder comment.
 
-      // Rental assignments table
-      `CREATE TABLE IF NOT EXISTS rental_assignments (
-        id TEXT PRIMARY KEY,
-        booking_id TEXT NOT NULL,
-        equipment_id TEXT NOT NULL,
-        quantity INTEGER DEFAULT 1,
-        check_in TEXT,
-        check_out TEXT,
-        status TEXT DEFAULT 'active',
-        notes TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
-        FOREIGN KEY(equipment_id) REFERENCES equipment(id) ON DELETE CASCADE
-      )`,
+      
 
       // Courses table
       `CREATE TABLE IF NOT EXISTS courses (
@@ -180,6 +167,21 @@ export async function initDb() {
         FOREIGN KEY(diver_id) REFERENCES divers(id) ON DELETE CASCADE,
         FOREIGN KEY(divemaster_id) REFERENCES staff(id) ON DELETE SET NULL,
         FOREIGN KEY(boat_staff_id) REFERENCES staff(id) ON DELETE SET NULL
+      )`,
+
+      // Rental assignments table (moved after bookings so FK resolves)
+      `CREATE TABLE IF NOT EXISTS rental_assignments (
+        id TEXT PRIMARY KEY,
+        booking_id TEXT NOT NULL,
+        equipment_id TEXT NOT NULL,
+        quantity INTEGER DEFAULT 1,
+        check_in TEXT,
+        check_out TEXT,
+        status TEXT DEFAULT 'active',
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+        FOREIGN KEY(equipment_id) REFERENCES equipment(id) ON DELETE CASCADE
       )`,
 
       // Accommodations table
