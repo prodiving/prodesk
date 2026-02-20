@@ -4,7 +4,10 @@
 
 const isBrowser = typeof window !== 'undefined';
 const isDevelopment = isBrowser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-const BASE_URL = isDevelopment ? (import.meta.env.VITE_API_URL || 'http://localhost:3000') : (import.meta.env.VITE_API_URL || '');
+// Sanitize VITE_API_URL: ignore accidental database connection strings (postgres://...)
+const rawApiUrl = import.meta.env.VITE_API_URL ?? '';
+const sanitizedApiUrl = (rawApiUrl || '').toString().trim().toLowerCase().startsWith('postgres') ? '' : rawApiUrl;
+const BASE_URL = isDevelopment ? (sanitizedApiUrl || 'http://localhost:3000') : (sanitizedApiUrl || '');
 // Supabase client (used for selective client-side reads when configured)
 import { supabase } from '@/integrations/supabase/client';
 const userId = 'user-1'; // In production, get from auth

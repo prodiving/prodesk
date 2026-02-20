@@ -13,7 +13,8 @@ export default function DebugPage() {
         const keyPresent = !!import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
         setDetails({ url: url ? url.replace(/(:\/\/)(.*)$/,'$1***') : null, keyPresent });
         setStatus('querying supabase');
-        const { data, error } = await supabase.from('profiles').select('id').limit(1);
+        // Query `divers` (seeded) so debug page works out-of-the-box for this project.
+        const { data, error } = await supabase.from('divers').select('id, name').limit(1);
         if (error) {
           setStatus('error');
           setDetails((d:any) => ({ ...d, queryError: error.message }));
