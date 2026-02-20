@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiClient } from "@/integrations/api/client";
+import { ENABLE_TRIPS } from '@/config';
 import EquipmentMaintenancePage from '@/pages/EquipmentMaintenancePage';
 import { useToast } from "@/hooks/use-toast";
 
@@ -421,7 +422,7 @@ export default function DiversPage() {
             <TabsTrigger value="contact">Contact</TabsTrigger>
             <TabsTrigger value="courses">Courses</TabsTrigger>
             <TabsTrigger value="equipment">Equipment</TabsTrigger>
-            <TabsTrigger value="trips">Trips</TabsTrigger>
+            {ENABLE_TRIPS && <TabsTrigger value="trips">Trips</TabsTrigger>}
             <TabsTrigger value="invoices">Invoices</TabsTrigger>
             <TabsTrigger value="forms">Forms</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -617,34 +618,36 @@ export default function DiversPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="trips" className="space-y-4">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Bookings & Trips</h3>
-              {selectedDiverBookings.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No bookings found for this diver.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {selectedDiverBookings.map((booking: any) => (
-                    <div key={booking.id} className="border rounded p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-medium">{booking.courses?.name || 'Fun Dive'}</h4>
-                          <p className="text-sm text-muted-foreground">Check-in: {new Date(booking.check_in).toLocaleDateString()}</p>
-                          <p className="text-sm text-muted-foreground">Check-out: {booking.check_out ? new Date(booking.check_out).toLocaleDateString() : 'N/A'}</p>
-                          <p className="text-sm text-muted-foreground">Agent: {booking.agent?.name || 'N/A'}</p>
+          {ENABLE_TRIPS && (
+            <TabsContent value="trips" className="space-y-4">
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Bookings & Trips</h3>
+                {selectedDiverBookings.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No bookings found for this diver.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {selectedDiverBookings.map((booking: any) => (
+                      <div key={booking.id} className="border rounded p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium">{booking.courses?.name || 'Fun Dive'}</h4>
+                            <p className="text-sm text-muted-foreground">Check-in: {new Date(booking.check_in).toLocaleDateString()}</p>
+                            <p className="text-sm text-muted-foreground">Check-out: {booking.check_out ? new Date(booking.check_out).toLocaleDateString() : 'N/A'}</p>
+                            <p className="text-sm text-muted-foreground">Agent: {booking.agent?.name || 'N/A'}</p>
+                          </div>
+                          <Badge variant={booking.payment_status === 'paid' ? 'default' : 'outline'}>
+                            {booking.payment_status}
+                          </Badge>
                         </div>
-                        <Badge variant={booking.payment_status === 'paid' ? 'default' : 'outline'}>
-                          {booking.payment_status}
-                        </Badge>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
-          </TabsContent>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </TabsContent>
+          )}
 
           <TabsContent value="invoices" className="space-y-4">
             <Card className="p-6">

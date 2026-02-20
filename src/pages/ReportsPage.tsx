@@ -52,6 +52,7 @@ export default function ReportsPage() {
     ],
   };
 
+
   const navigateMonth = (direction: 'prev' | 'next') => {
     setCurrentDate(prev => {
       const newDate = new Date(prev);

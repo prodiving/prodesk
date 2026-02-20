@@ -1,9 +1,19 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTrips } from '@/hooks/useTrips';
+import { ENABLE_TRIPS } from '@/config';
 
 export default function TripsPage() {
   const { trips, loading } = useTrips();
+
+  if (!ENABLE_TRIPS) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold mb-4">Trips (disabled)</h1>
+        <div className="text-sm text-muted-foreground">The trips feature is currently disabled.</div>
+      </div>
+    );
+  }
 
   return (
     <div>

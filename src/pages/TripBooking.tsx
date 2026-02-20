@@ -1,6 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { ENABLE_TRIPS } from '@/config';
 import { useQuery } from '@tanstack/react-query';
 import WaiverForm from '@/components/WaiverForm';
 
@@ -9,6 +10,7 @@ export default function TripBooking() {
   const navigate = useNavigate();
 
   const { data: trip } = useQuery(['trip', id], async () => {
+    if (!ENABLE_TRIPS) return null;
     const { data } = await supabase.from('trips').select('*').eq('id', id).single();
     return data;
   });
@@ -23,6 +25,15 @@ export default function TripBooking() {
     }
     alert('Booking created');
     navigate('/bookings');
+  }
+
+  if (!ENABLE_TRIPS) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold mb-4">Book Trip (disabled)</h1>
+        <div className="text-sm text-muted-foreground">Trip bookings are disabled.</div>
+      </div>
+    );
   }
 
   return (

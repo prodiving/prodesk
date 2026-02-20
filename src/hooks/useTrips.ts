@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/integrations/api/client';
+import { ENABLE_TRIPS } from '@/config';
 
 const isBrowser = typeof window !== 'undefined';
 const isDevelopment = isBrowser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
@@ -10,6 +11,11 @@ export function useTrips() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!ENABLE_TRIPS) {
+      setTrips([]);
+      setLoading(false);
+      return;
+    }
     let mounted = true;
     async function load() {
       setLoading(true);
