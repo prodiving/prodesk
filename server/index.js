@@ -11,8 +11,20 @@ const app = express();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_none');
 
 // Middleware
+// Configure CORS origins. In production you can set ALLOWED_ORIGINS as a comma-separated
+// list (e.g. https://app.amplifyapp.com,https://another-host.com). If not set, fall
+// back to the original local/dev list.
+const defaultOrigins = ['http://localhost:5173', 'http://localhost:4173', 'http://localhost:3000', '127.0.0.1:5173', '127.0.0.1:4173', 'https://main.dc9vnrm1vnw2f.amplifyapp.com'];
+const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean) : defaultOrigins;
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:4173', 'http://localhost:3000', '127.0.0.1:5173', '127.0.0.1:4173', 'https://main.dc9vnrm1vnw2f.amplifyapp.com'],
+  origin: (origin, callback) => {
+    // Allow non-browser requests (curl, server-side) which have no origin
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    // You can change this to allow all origins in a pinch by returning callback(null, true)
+    return callback(new Error('CORS policy: origin not allowed'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'x-user-id', 'Authorization'],
