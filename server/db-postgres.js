@@ -327,6 +327,8 @@ export async function initDb() {
     console.log('✅ PostgreSQL database initialized');
 
     // Auto-seed data for PostgreSQL if tables are empty (helps Railway deployments)
+    // Temporarily disabled for debugging
+    /*
     try {
       const countRes = await client.query('SELECT COUNT(*)::int as count FROM divers');
       const count = (countRes && countRes.rows && countRes.rows[0]) ? countRes.rows[0].count : 0;
@@ -370,6 +372,7 @@ export async function initDb() {
     } catch (seedErr) {
       console.error('❌ PostgreSQL seeding failed:', seedErr);
     }
+    */
   } finally {
     client.release();
   }
