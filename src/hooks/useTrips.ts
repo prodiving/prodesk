@@ -4,7 +4,7 @@ import { ENABLE_TRIPS } from '@/config';
 
 const isBrowser = typeof window !== 'undefined';
 const isDevelopment = isBrowser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-const API_BASE_URL = isDevelopment ? 'http://localhost:3000' : '';
+const API_BASE_URL = isDevelopment ? (import.meta.env.VITE_API_URL ?? 'http://localhost:3000') : '';
 
 export function useTrips() {
   const [trips, setTrips] = useState<any[]>([]);
