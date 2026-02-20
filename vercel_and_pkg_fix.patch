@@ -1,0 +1,23 @@
+*** Begin Patch
+*** Update File: server/package.json
+@@
+-    "vercel-start": "node index.js"
+-    "seed": "node seed.js"
++    "vercel-start": "node index.js",
++    "seed": "node seed.js"
+*** End Patch
+*** Begin Patch
+*** Update File: vercel.json
+@@
+-  "builds": [
+-    { "src": "server/index.js", "use": "@vercel/node" },
+-    { "src": "package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } }
+-  ],
+-  "routes": [
+-    { "src": "/api/(.*)", "dest": "/server/index.js" },
+-    { "src": "/(.*)", "dest": "/index.html" }
+-  ]
++  "routes": [
++    { "src": "/(.*)", "dest": "/index.html" }
++  ]
+*** End Patch
