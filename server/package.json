@@ -6,7 +6,7 @@
     "dev": "node index.js",
     "migrate": "node migrate.js",
     "start": "node migrate.js && node index.js",
-    "vercel-start": "node index.js"
+    "vercel-start": "node index.js",
     "seed": "node seed.js"
   },
   "dependencies": {
