@@ -72,31 +72,10 @@ export async function initDb() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
 
-      // Bookings table
-      `CREATE TABLE IF NOT EXISTS bookings (
-        id TEXT PRIMARY KEY,
-        diver_id TEXT NOT NULL,
-        course_id TEXT,
-        group_id TEXT,
-        accommodation_id TEXT,
-        check_in TEXT,
-        check_out TEXT,
-        size TEXT,
-        weight TEXT,
-        height TEXT,
-        agent_id TEXT,
-        divemaster_id TEXT,
-        boat_staff_id TEXT,
-        total_amount DECIMAL(10,2) DEFAULT 0,
-        invoice_number TEXT UNIQUE,
-        payment_status TEXT DEFAULT 'unpaid',
-        notes TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(diver_id) REFERENCES divers(id) ON DELETE CASCADE,
-        FOREIGN KEY(divemaster_id) REFERENCES staff(id) ON DELETE SET NULL,
-        FOREIGN KEY(boat_staff_id) REFERENCES staff(id) ON DELETE SET NULL
-      )`,
+      // NOTE: `bookings` depends on `staff` (foreign keys). The `staff`
+      // table is created later in this list; to avoid a circular dependency
+      // in PostgreSQL, we'll create `bookings` after `staff` below. For now
+      // leave a placeholder comment.
 
       // Rental assignments table
       `CREATE TABLE IF NOT EXISTS rental_assignments (
@@ -175,6 +154,32 @@ export async function initDb() {
         location TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
+
+      // Bookings table (moved here so `staff` already exists for FK references)
+      `CREATE TABLE IF NOT EXISTS bookings (
+        id TEXT PRIMARY KEY,
+        diver_id TEXT NOT NULL,
+        course_id TEXT,
+        group_id TEXT,
+        accommodation_id TEXT,
+        check_in TEXT,
+        check_out TEXT,
+        size TEXT,
+        weight TEXT,
+        height TEXT,
+        agent_id TEXT,
+        divemaster_id TEXT,
+        boat_staff_id TEXT,
+        total_amount DECIMAL(10,2) DEFAULT 0,
+        invoice_number TEXT UNIQUE,
+        payment_status TEXT DEFAULT 'unpaid',
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(diver_id) REFERENCES divers(id) ON DELETE CASCADE,
+        FOREIGN KEY(divemaster_id) REFERENCES staff(id) ON DELETE SET NULL,
+        FOREIGN KEY(boat_staff_id) REFERENCES staff(id) ON DELETE SET NULL
       )`,
 
       // Accommodations table

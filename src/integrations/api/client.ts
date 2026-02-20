@@ -5,6 +5,8 @@
 const isBrowser = typeof window !== 'undefined';
 const isDevelopment = isBrowser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 const BASE_URL = isDevelopment ? (import.meta.env.VITE_API_URL || 'http://localhost:3000') : (import.meta.env.VITE_API_URL || '');
+// Supabase client (used for selective client-side reads when configured)
+import { supabase } from '@/integrations/supabase/client';
 const userId = 'user-1'; // In production, get from auth
 
 export const apiClient = {
@@ -33,7 +35,20 @@ export const apiClient = {
   },
 
   divers: {
-    list: () => apiClient.request('GET', '/api/divers'),
+    // Use Supabase client for fast read paths when configured in the frontend.
+    list: async () => {
+      if (import.meta.env.VITE_SUPABASE_URL) {
+        try {
+          const { data, error } = await (supabase as any).from('divers').select('*').order('created_at', { ascending: false });
+          if (error) throw error;
+          return data || [];
+        } catch (e) {
+          // Fallback to API when Supabase read fails
+          return apiClient.request('GET', '/api/divers');
+        }
+      }
+      return apiClient.request('GET', '/api/divers');
+    },
     get: (id) => apiClient.request('GET', `/api/divers/${id}`),
     create: (payload) => apiClient.request('POST', '/api/divers', payload),
     update: (id, payload) => apiClient.request('PUT', `/api/divers/${id}`, payload),
