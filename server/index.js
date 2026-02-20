@@ -31,6 +31,15 @@ app.use(cors({
   origin: (origin, callback) => {
     // Allow non-browser requests (curl, server-side) which have no origin
     if (!origin) return callback(null, true);
+
+    // Allow any localhost (all ports) to ease local development
+    try {
+      const hostname = new URL(origin).hostname;
+      if (hostname === 'localhost' || hostname === '127.0.0.1') return callback(null, true);
+    } catch (e) {
+      // ignore malformed origin
+    }
+
     if (allowedOrigins.includes(origin)) return callback(null, true);
     // You can change this to allow all origins in a pinch by returning callback(null, true)
     return callback(new Error('CORS policy: origin not allowed'));
