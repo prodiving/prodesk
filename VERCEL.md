@@ -20,27 +20,9 @@ Vercel should auto-detect. If it asks:
 Then add Environment Variables:
 - `NODE_ENV` = `production`
 - `AUTO_SEED` = `false`
-
-Optional: Add Supabase environment variables (recommended for persistent data)
-- `VITE_SUPABASE_URL` = `https://<project>.supabase.co`
-- `VITE_SUPABASE_ANON_KEY` = `<anon-public-key>`
-- `VITE_SUPABASE_PUBLISHABLE_KEY` = `<publishable-key>`
-
-For a persistent server-side Postgres connection (so the `server` uses Supabase/Postgres
-instead of ephemeral SQLite), add the Supabase Postgres connection string as:
-- `DATABASE_URL` = `postgres://<user>:<password>@<host>:5432/<database>`
-
-Use the Vercel CLI to add environment variables interactively:
-```bash
-vercel env add VITE_SUPABASE_URL production
-vercel env add VITE_SUPABASE_ANON_KEY production
-vercel env add VITE_SUPABASE_PUBLISHABLE_KEY production
-vercel env add DATABASE_URL production
-```
-
-Or add them in the Vercel Dashboard → Project → Settings → Environment Variables.
-
-After adding these envs, trigger a new deployment so the frontend is built with the `VITE_*` values and the server picks up `DATABASE_URL`.
+Then add Environment Variables:
+- `NODE_ENV` = `production`
+- `AUTO_SEED` = `false`
 
 ## 4. Deploy
 - Click "Deploy"

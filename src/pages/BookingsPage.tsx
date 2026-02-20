@@ -42,7 +42,7 @@ export default function BookingsPage() {
       ]);
       
       // Load staff for fun dive bookings
-      const BASE_URL = import.meta.env.VITE_API_URL ?? '';
+      const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
       const staffRes = await fetch(`${BASE_URL}/api/staff`).catch(() => ({ ok: false }));
       const staffData = staffRes.ok ? await staffRes.json() : [];
       

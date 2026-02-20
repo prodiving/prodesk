@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? '';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export function useMaintenanceTasks() {
   const [tasks, setTasks] = useState<any[]>([]);

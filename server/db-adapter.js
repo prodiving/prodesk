@@ -3,15 +3,18 @@
 let dbModule;
 
 async function initializeDbModule() {
-  // Prefer an explicit DATABASE_URL (Postgres) in production.
-  // Fall back to local SQLite when DATABASE_URL is not set.
-  const isDatabaseUrl = !!process.env.DATABASE_URL;
+  // Optionally force SQLite (useful for Vercel preview sites or when you
+  // explicitly want the bundled local DB). Set `FORCE_SQLITE=true` or when
+  // running on Vercel (process.env.VERCEL === '1') to prefer SQLite.
+  const forceSqlite = (process.env.FORCE_SQLITE === 'true') || (process.env.VERCEL === '1');
+  // Prefer an explicit DATABASE_URL (Postgres) unless forced to use SQLite.
+  const isDatabaseUrl = !!process.env.DATABASE_URL && !forceSqlite;
 
   if (isDatabaseUrl) {
     console.log('🔗 Using PostgreSQL (DATABASE_URL detected)');
     dbModule = await import('./db-postgres.js');
   } else {
-    console.log('📁 Using SQLite (local development)');
+    console.log('📁 Using SQLite (local or forced)');
     dbModule = await import('./db-sqlite.js');
   }
   
