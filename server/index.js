@@ -15,7 +15,17 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_none');
 // list (e.g. https://app.amplifyapp.com,https://another-host.com). If not set, fall
 // back to the original local/dev list.
 const defaultOrigins = ['http://localhost:5173', 'http://localhost:4173', 'http://localhost:3000', '127.0.0.1:5173', '127.0.0.1:4173', 'https://main.dc9vnrm1vnw2f.amplifyapp.com'];
-const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean) : defaultOrigins;
+const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean) : [...defaultOrigins];
+
+// If running on Vercel, include the auto-assigned VERCEL_URL origin (e.g. my-app.vercel.app)
+if (process.env.VERCEL_URL) {
+  try {
+    const vercelOrigin = `https://${process.env.VERCEL_URL}`;
+    if (!allowedOrigins.includes(vercelOrigin)) allowedOrigins.push(vercelOrigin);
+  } catch (e) {
+    // ignore
+  }
+}
 
 app.use(cors({
   origin: (origin, callback) => {
