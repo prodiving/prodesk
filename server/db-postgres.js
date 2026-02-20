@@ -324,6 +324,25 @@ export async function initDb() {
       }
     }
 
+    // Ensure commonly added columns exist on older deployments (migration safety)
+    const alterCols = [
+      { name: 'size', sql: 'TEXT' },
+      { name: 'weight', sql: 'TEXT' },
+      { name: 'height', sql: 'TEXT' },
+      { name: 'agent_id', sql: 'TEXT' },
+      { name: 'divemaster_id', sql: 'TEXT' },
+      { name: 'boat_staff_id', sql: 'TEXT' }
+    ];
+
+    for (const col of alterCols) {
+      try {
+        await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS ${col.name} ${col.sql}`);
+      } catch (e) {
+        // Log but don't fail the migration
+        console.warn('Could not add column', col.name, e.message || e);
+      }
+    }
+
     console.log('✅ PostgreSQL database initialized');
 
     // Auto-seed data for PostgreSQL if tables are empty (helps Railway deployments)
